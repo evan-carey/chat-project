@@ -134,7 +134,7 @@ public class ExampleClient implements MessageListener {
 		return Long.toHexString(randomLong);
 	}
 
-	private void enterServer() {
+	public boolean enterServer() {
 
 		try {
 			
@@ -180,9 +180,11 @@ public class ExampleClient implements MessageListener {
 				// txtMessage.setJMSCorrelationID(correlationId);
 				this.producer.send(txtMessage);
 			}
+			return true;
 		} catch (JMSException e) {
 			// Handle the exception appropriately
 		}
+		return false;
 	}
 
 	public void onMessage(Message message) {
