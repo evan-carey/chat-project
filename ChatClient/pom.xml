@@ -1,0 +1,33 @@
+<!-- Jesse Bishop -->
+<!-- PID: A10226163 -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>CSE110ChatSystem</groupId>
+  <artifactId>ChatClient</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>CSE110 Chat Client</name>
+  <description>Client part of UCSD CSE110 Chat System Project</description>
+
+  <dependencies>
+  	<dependency>
+  		<groupId>junit</groupId>
+  		<artifactId>junit</artifactId>
+  		<version>4.8.1</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>log4j</groupId>
+  		<artifactId>log4j</artifactId>
+  		<version>1.2.17</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.apache.activemq</groupId>
+  		<artifactId>activemq-broker</artifactId>
+  		<version>5.8.0</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.apache.cassandra</groupId>
+  		<artifactId>cassandra-all</artifactId>
+  		<version>0.8.1</version>
+  	</dependency>
+  </dependencies>
+</project>
