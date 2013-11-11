@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.client;
 
+import java.util.Random;
 import java.util.Scanner;
 
 import javax.jms.Connection;
@@ -21,6 +22,8 @@ public class ConnectingClient implements MessageListener {
 	private Session session;
 	private Destination loginQueue;
 	private MessageProducer producer;
+	
+	private String username, password;
 
 	public ConnectingClient() {
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
@@ -35,39 +38,52 @@ public class ConnectingClient implements MessageListener {
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			MessageConsumer responseConsumer = session.createConsumer(loginQueue);
 			responseConsumer.setMessageListener(this);
-			validate(loginQueue);
+			getAccountInfo();
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());
 		}
 	}
-
-	private void validate(Destination tempDest) {
+	
+	private void getAccountInfo() {
 		Scanner keyboard = new Scanner(System.in);
 		System.out.print("Enter username: ");
-		String username = keyboard.nextLine().trim();
+		this.username = keyboard.nextLine().trim();
 		System.out.print("Enter password: ");
-		String password = keyboard.nextLine().trim();
+		this.password = keyboard.nextLine().trim();
 
-		String account = username + " " + password;
+		keyboard.close();
+		
+		verifyAccount(loginQueue);
+	}
 
+	private void verifyAccount(Destination tempDest) {
 		try {
-			producer.send(session.createTextMessage(account),
-					DeliveryMode.NON_PERSISTENT, 9,
-					Message.DEFAULT_TIME_TO_LIVE);
-			System.out.println("Account info sent to server");
+			TextMessage txtMessage = session.createTextMessage();
+			txtMessage.setText(this.username + " " + this.password);
+			txtMessage.setJMSReplyTo(tempDest);
+			String correlationId = "verifyAccount";
+			txtMessage.setJMSCorrelationID(correlationId);
+			this.producer.send(txtMessage);
+			System.out.println("Connecting to server...");
 		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
-		keyboard.close();
 
 	}
 
+	private String createRandomString() {
+		Random random = new Random(System.currentTimeMillis());
+		long randomLong = random.nextLong();
+		return Long.toHexString(randomLong);
+	}
+	
 	public void onMessage(Message message) {
 		try {
 			if (((TextMessage) message).getText().equals("valid")) {
 				connection.close();
 				new ExampleClient();
 			} else {
+				System.out.println(((TextMessage) message).getText());
 				System.out.println("Invalid account. Terminating...");
 				System.exit(0);
 			}

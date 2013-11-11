@@ -18,9 +18,12 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
+
+import edu.ucsd.cse110.server.accountinfo.AccountException;
+import edu.ucsd.cse110.server.accountinfo.Accounts;
  
 public class ExampleServer implements MessageListener {
-	private static final String USER_FILE = "src/main/java/edu/ucsd/cse110/server/accounts.txt";
+	
 	
     private static int ackMode;
     //private static String messageQueueName;
@@ -30,10 +33,14 @@ public class ExampleServer implements MessageListener {
     // server-to-client topic
     private static String produceTopicName;
  
+    private Connection connection;
     private Session session;
     private boolean transacted = false;
     private MessageProducer replyProducer;
     private MessageProtocol messageProtocol;
+    
+    /** User accounts */
+    private Accounts accounts;
     
     static {
         messageBrokerUrl = "tcp://localhost:61616";
@@ -44,6 +51,7 @@ public class ExampleServer implements MessageListener {
     }
  
     public ExampleServer() {
+    	accounts = new Accounts();
         try {
             //This message broker is embedded
             BrokerService broker = new BrokerService();
@@ -63,7 +71,6 @@ public class ExampleServer implements MessageListener {
  
     private void setupMessageQueueConsumer() {
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(messageBrokerUrl);
-        Connection connection;
         try {
             connection = connectionFactory.createConnection();
             connection.start();
@@ -87,23 +94,26 @@ public class ExampleServer implements MessageListener {
     }
  
     public void onMessage(Message message) {
-    	
         System.out.println("Message received by server");
-    	try {
-			if( message.getJMSPriority() == 9) {
-				if (validate(((TextMessage) message).getText())) {
-					this.replyProducer.send(session.createTextMessage("valid"), DeliveryMode.NON_PERSISTENT, 9, Message.DEFAULT_TIME_TO_LIVE);
-					return;
-				} else {
-					this.replyProducer.send(session.createTextMessage("invalid"), DeliveryMode.NON_PERSISTENT, 9, Message.DEFAULT_TIME_TO_LIVE);
-					return;
-				}
+        
+        // Username, password verification
+    	/*try {
+			if (message.getJMSCorrelationID().equals("verifyAccount")) {
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				String[] account = ((TextMessage)message).getText().split(" ");
+				String username = account[0];
+				String password = account[1];
+				String responseText = validate(username, password);
+				response.setText(responseText);
+				this.replyProducer.send(message.getJMSReplyTo(), response);
+				return;
 			}
-		} catch (JMSException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		} catch (JMSException e) {
+			e.printStackTrace();
+		}*/
     	
+    	// Regular message handling
     	try {
             TextMessage response = this.session.createTextMessage();
             if (message instanceof TextMessage) {
@@ -126,51 +136,21 @@ public class ExampleServer implements MessageListener {
         }
     }
     
-    public boolean validate(String account) {
-    	BufferedReader reader = null;
-		try {
-			reader = new BufferedReader(new FileReader(USER_FILE));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				if (line.equalsIgnoreCase(account)) {
-					reader.close();
-					System.out.println("Account validated");
-					return true;
-				}
-			}
-			System.out.println("Invalid username/password combination");
-			reader.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return false;
+    public String validate(String username, String password) {
+    	// check if username is in database
+    	if (!accounts.hasUsername(username))
+    		return "Account does not exist.";
+    	// if it does, verify the password
+    	try {
+    		if (password.equals(accounts.getPassword(username)))
+    			return "valid";
+    		else
+    			return "Invalid username/password combination.";
+    	} catch (AccountException e) {
+    		return e.getMessage();
+    	}
     }
     
-//    public boolean validatePassword(String password) {
-//    	BufferedReader reader = null;
-//		try {
-//			reader = new BufferedReader(new FileReader("accounts.txt"));
-//			String line;
-//			while ((line = reader.readLine()) != null) {
-//				String[] account = line.split(" ");
-//				if (account[1].equalsIgnoreCase(password)) {
-//					reader.close();
-//					return true;
-//				}
-//			}
-//			reader.close();
-//		} catch (FileNotFoundException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		return false;
-//    }
-// 
     public static void main(String[] args) {
         new ExampleServer();
     }

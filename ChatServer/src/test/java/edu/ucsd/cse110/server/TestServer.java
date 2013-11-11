@@ -23,14 +23,14 @@ public class TestServer {
 	
 	@Test
 	public void testValidateBad() {
-		boolean validate = serverToTest.validate("testpass");
-		assertFalse(validate);
+		assertFalse("valid".equals(serverToTest.validate("invalidName", "testpass")));
+		assertTrue("Account does not exist.".equals(serverToTest.validate("invalidName", "testpass")));
+		assertTrue("Invalid username/password combination.".equals(serverToTest.validate("testname", "")));
 	}
 	
 	@Test
 	public void testValidateGood() {
-		boolean validate = serverToTest.validate("testname testpass");
-		assertTrue(validate);
+		assertTrue("valid".equals(serverToTest.validate("testname", "testpass")));
 	}
 
 }
