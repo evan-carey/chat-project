@@ -20,7 +20,8 @@ public class ConnectingClient implements MessageListener {
 
 	private Connection connection;
 	private Session session;
-	private Destination loginQueue;
+	private Destination producerQueue;
+	private Destination consumerQueue;
 	private MessageProducer producer;
 	
 	private String username, password;
@@ -33,12 +34,18 @@ public class ConnectingClient implements MessageListener {
 			connection = connectionFactory.createConnection();
 			connection.start();
 			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-			loginQueue = session.createTemporaryQueue();
-			this.producer = session.createProducer(loginQueue);
-			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			MessageConsumer responseConsumer = session.createConsumer(loginQueue);
-			responseConsumer.setMessageListener(this);
 			getAccountInfo();
+			// set producer
+			producerQueue = session.createTopic("client.messages");
+			this.producer = session.createProducer(producerQueue);
+			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+			
+			// set consumer
+			consumerQueue = session.createTemporaryTopic();
+			MessageConsumer responseConsumer = session.createConsumer(consumerQueue);
+			responseConsumer.setMessageListener(this);
+			
+			verifyAccount();
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());
 		}
@@ -51,20 +58,17 @@ public class ConnectingClient implements MessageListener {
 		System.out.print("Enter password: ");
 		this.password = keyboard.nextLine().trim();
 
-		keyboard.close();
-		
-		verifyAccount(loginQueue);
 	}
 
-	private void verifyAccount(Destination tempDest) {
+	private void verifyAccount() {
 		try {
 			TextMessage txtMessage = session.createTextMessage();
 			txtMessage.setText(this.username + " " + this.password);
-			txtMessage.setJMSReplyTo(tempDest);
+			txtMessage.setJMSReplyTo(consumerQueue);
 			String correlationId = "verifyAccount";
 			txtMessage.setJMSCorrelationID(correlationId);
 			this.producer.send(txtMessage);
-			System.out.println("Connecting to server...");
+			//System.out.println("Connecting to server...");
 		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
@@ -80,8 +84,10 @@ public class ConnectingClient implements MessageListener {
 	public void onMessage(Message message) {
 		try {
 			if (((TextMessage) message).getText().equals("valid")) {
+				System.out.println("Account validated. Connecting to server.");
+				session.close();
 				connection.close();
-				new ExampleClient();
+				new ExampleClient(username);
 			} else {
 				System.out.println(((TextMessage) message).getText());
 				System.out.println("Invalid account. Terminating...");

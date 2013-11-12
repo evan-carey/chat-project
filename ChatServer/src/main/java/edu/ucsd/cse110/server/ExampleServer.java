@@ -1,10 +1,5 @@
 package edu.ucsd.cse110.server;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
@@ -94,11 +89,12 @@ public class ExampleServer implements MessageListener {
     }
  
     public void onMessage(Message message) {
-        System.out.println("Message received by server");
+        
         
         // Username, password verification
-    	/*try {
-			if (message.getJMSCorrelationID().equals("verifyAccount")) {
+    	try {
+    		//System.out.println(message.getJMSCorrelationID());
+			if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("verifyAccount")) {
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage)message).getText().split(" ");
@@ -106,14 +102,17 @@ public class ExampleServer implements MessageListener {
 				String password = account[1];
 				String responseText = validate(username, password);
 				response.setText(responseText);
-				this.replyProducer.send(message.getJMSReplyTo(), response);
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
 				return;
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();
-		}*/
+		}
     	
     	// Regular message handling
+    	System.out.println("Message received by server");
     	try {
             TextMessage response = this.session.createTextMessage();
             if (message instanceof TextMessage) {

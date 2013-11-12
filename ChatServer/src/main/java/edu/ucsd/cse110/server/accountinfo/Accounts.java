@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.server.accountinfo;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -29,6 +30,8 @@ public class Accounts {
 				accounts.put(account[0], account[1]);
 			}
 			reader.close();
+		} catch (EOFException e) {
+			e.printStackTrace();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

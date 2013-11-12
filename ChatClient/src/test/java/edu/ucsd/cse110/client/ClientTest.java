@@ -9,20 +9,16 @@ public class ClientTest {
 
 	@Test
 	public void testClientExists() {
-			ExampleClient FirstClient = new ExampleClient();
-			assertNotNull(FirstClient);	
+		ExampleClient FirstClient = new ExampleClient("username");
+		assertNotNull(FirstClient);
 
 	}
 
 	@Test
-	public void testMessageSent(){
-		ExampleClient SecondClient = new ExampleClient();
+	public void testMessageSent() {
+		ExampleClient SecondClient = new ExampleClient("username");
 		boolean CheckSent = SecondClient.enterServer();
-		assertTrue(CheckSent);	
+		assertTrue(CheckSent);
 	}
-	
-	
-	
-	
 
 }
