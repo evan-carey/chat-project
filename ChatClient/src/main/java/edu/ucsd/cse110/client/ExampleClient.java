@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.client;
 
+
 import java.util.Random;
 import java.util.Scanner;
 
@@ -20,38 +21,33 @@ public class ExampleClient implements MessageListener {
 	
 	/** Username associated with the client */
 	private String username;
-	
+
 	private static int ackMode;
 	// private static String clientQueueName;
-	private static String clientTopicName;
+	
+	//private static String clientTopicName;
 	private boolean flag = true;
 	private boolean transacted = false;
+	
+	//Create the necessary variables to connect to the server 
 	private MessageProducer producer;
 	private Session session;
 	private Connection connection;
 
-	// server-to-client topic
-	private static String consumeTopicName;
-
-	static {
-		// clientQueueName = "client.messages";
-		clientTopicName = "client.messages";
-		ackMode = Session.AUTO_ACKNOWLEDGE;
-		consumeTopicName = "server.messages";
-
-	}
 
 	public ExampleClient(String username) {
 		this.username = username;
+
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-				"tcp://localhost:61616");
+				ClientConstants.messageBrokerUrl);
+		
 		// Connection connection;
 		try {
 
 			connection = connectionFactory.createConnection();
 			connection.start();
-			session = connection.createSession(transacted, ackMode);
-			Destination adminQueue = session.createTopic(clientTopicName);
+			session = connection.createSession(transacted, ClientConstants.ackMode);
+			Destination adminQueue = session.createTopic(ClientConstants.clientTopicName);
 
 			// Setup a message producer to send message to the queue the server
 			// is consuming from
@@ -67,7 +63,7 @@ public class ExampleClient implements MessageListener {
 			//Destination tempDest = session.createTemporaryTopic();
 			//validate(tempDest);
 			
-			Destination consumeTopic = session.createTopic(consumeTopicName);
+			Destination consumeTopic = session.createTopic(ClientConstants.consumeTopicName);
 			MessageConsumer responseConsumer = session.createConsumer(consumeTopic);
 
 			// This class will handle the messages to the temp queue as well
@@ -90,26 +86,32 @@ public class ExampleClient implements MessageListener {
 
 	public boolean enterServer() {
 
+		
 		try {
-			
+						
 			while (flag) {
 				System.out.print(">>");
+				
 				// Now create the actual message you want to send
 				Scanner keyboard = new Scanner(System.in);
-
 				String message = keyboard.nextLine();
 
+				//If the user types the keyword "logoff"
+				//they will be disconnected
 				if ("logoff".equalsIgnoreCase(message)) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("Client logged off");
+					
 					// txtMessage.setJMSReplyTo(tempDest);
 					//String correlationId = this.createRandomString();
+
 					// txtMessage.setJMSCorrelationID(correlationId);
 					this.producer.send(txtMessage);
 					System.out.println("Successfully logged off");
 					connection.close();
-					// break;
+
 				}
+				
 
 				TextMessage txtMessage = session.createTextMessage();
 				txtMessage.setText(message);
@@ -147,7 +149,8 @@ public class ExampleClient implements MessageListener {
 					TextMessage textMessage = (TextMessage) message;
 					messageText = textMessage.getText();
 
-					System.out.print("\n\"" + messageText
+					
+					System.out.print("\n\"" + messageText 
 							+ "\"\n\n>>");
 				}
 			} catch (JMSException e) {
@@ -155,6 +158,7 @@ public class ExampleClient implements MessageListener {
 			}
 		
 	}
+
 
 
 	public static void main(String[] args) {
@@ -168,4 +172,5 @@ public class ExampleClient implements MessageListener {
 		// new ExampleClient();
 		new ConnectingClient();	
 	}
+
 }
