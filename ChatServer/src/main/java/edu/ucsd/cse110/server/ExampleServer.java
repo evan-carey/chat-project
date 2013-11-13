@@ -1,5 +1,7 @@
 package edu.ucsd.cse110.server;
 
+import java.util.HashMap;
+
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
@@ -28,10 +30,13 @@ public class ExampleServer implements MessageListener {
     
     /** User accounts */
     private Accounts accounts;
+    private HashMap< String, String> onlineUsers;
     
  
     public ExampleServer() {
     	accounts = new Accounts();
+    	onlineUsers = new HashMap<String, String>();
+    	
         try {
             //This message broker is embedded
             BrokerService broker = new BrokerService();
@@ -77,15 +82,60 @@ public class ExampleServer implements MessageListener {
             //Handle the exception appropriately
         }
     }
+    
+    private void addUserOnline( TextMessage tm ) throws JMSException {
+    	String clientID = tm.getJMSMessageID();
+    	String user = tm.getText();
+    	String[] temp = user.split(" ");
+    	user = temp[1];
+    	
+    	this.onlineUsers.put(user, clientID);
+    	System.out.println( "User: " + user + " at client: " + clientID);
+    }
+    
+    private void reportOnlineUsers( Destination dest ) throws JMSException {
+    	
+    	String users = "";
+    	
+    	for( String s: onlineUsers.keySet() ) {
+    		users+= s + "\n";
+    	}
+    	this.replyProducer.send( dest, this.session.createTextMessage(users) );
+    }
+    
+    private void handleMessage( TextMessage tm ) throws JMSException {
+    	String text = tm.getText();
+    	
+    	switch( text.charAt(1) ) {
+    	case 'a': addUserOnline( tm ); break;
+    	case 'g': reportOnlineUsers( tm.getJMSReplyTo() ); break;
+    	}
+    	
+    }
  
-    public void onMessage(Message message) {
+    public void onMessage(Message message){
+    	
+    	TextMessage tm = (TextMessage) message;
+    	String text = "";
+    	try {
+			text = tm.getText();
+			if( text.charAt(0) == '-' ) {
+				handleMessage( tm );
+	    	}
+		} catch (JMSException e1) {
+			e1.printStackTrace();
+		}
+    	
+    	
         
         // Username, password verification
     	try {
     		//System.out.println(message.getJMSCorrelationID());
+
 			if (message.getJMSCorrelationID() != null && (message.getJMSCorrelationID().equals("createAccount") ||
 					message.getJMSCorrelationID().equals("verifyAccount") || 
 					message.getJMSCorrelationID().equals("editAccount"))) {
+
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage)message).getText().split(" ");
@@ -135,6 +185,14 @@ public class ExampleServer implements MessageListener {
             if (message instanceof TextMessage) {
                 TextMessage txtMsg = (TextMessage) message;
                 String messageText = txtMsg.getText();
+                
+                if( messageText.contains("get") && messageText.contains("online") && messageText.contains("user") ) {
+                	txtMsg.setText("-g" + messageText);
+                	handleMessage( txtMsg );
+                	
+                	return;
+                }
+                
                 System.out.println(messageText);
                 response.setText(this.messageProtocol.handleProtocolMessage(messageText));
             }
@@ -159,6 +217,7 @@ public class ExampleServer implements MessageListener {
     	// if it does, verify the password
     	try {
     		if (password.equals(accounts.getPassword(username)))
+    		
     			return "valid";
     		else
     			return "Invalid username/password combination.";
@@ -171,6 +230,15 @@ public class ExampleServer implements MessageListener {
     	try{
     		accounts.addAccount(username, password);
     		return "created";
+    	} catch (AccountException e) {
+    		return e.getMessage();
+    	}
+    }
+    
+    public String edit(String username, String oldPass, String newPass){
+    	try{
+    		accounts.setPassword(username, oldPass, newPass);
+    		return "edited";
     	} catch (AccountException e) {
     		return e.getMessage();
     	}

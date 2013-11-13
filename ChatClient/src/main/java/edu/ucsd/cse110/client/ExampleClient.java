@@ -74,6 +74,8 @@ public class ExampleClient implements MessageListener {
 
 			// This class will handle the messages to the temp queue as well
 			responseConsumer.setMessageListener(this);
+			
+
 
 			enterServer();
 
@@ -96,6 +98,7 @@ public class ExampleClient implements MessageListener {
 		try {
 						
 			while (flag) {
+				producer.send( session.createTextMessage("-a " + username) );
 				System.out.print(">>");
 				
 				// Now create the actual message you want to send
