@@ -21,6 +21,8 @@ public class ExampleClient implements MessageListener {
 	
 	/** Username associated with the client */
 	private String username;
+	private String oldPass;
+	private String newPass;
 
 	private static int ackMode;
 	// private static String clientQueueName;
@@ -31,8 +33,12 @@ public class ExampleClient implements MessageListener {
 	
 	//Create the necessary variables to connect to the server 
 	private MessageProducer producer;
+	private MessageProducer accountProducer;
 	private Session session;
 	private Connection connection;
+	
+	private Destination editQueueProduce;
+	private Destination editQueueConsume;
 
 
 	public ExampleClient(String username) {
@@ -111,6 +117,9 @@ public class ExampleClient implements MessageListener {
 					connection.close();
 
 				}
+				else if ("editAccount".equalsIgnoreCase(message)) {
+					editAccount();
+				}
 				
 
 				TextMessage txtMessage = session.createTextMessage();
@@ -140,12 +149,50 @@ public class ExampleClient implements MessageListener {
 		}
 		return false;
 	}
+	
+	private void getInfo() {
+		System.out.println("Please enter your old account info along with a new password. ");
+		Scanner keyboard = new Scanner(System.in);
+		System.out.print("Enter username: ");
+		this.username = keyboard.nextLine().trim();
+		System.out.print("Enter old password: ");
+		this.oldPass = keyboard.nextLine().trim();
+		System.out.print("Enter new password: ");
+		this.newPass = keyboard.nextLine().trim();
+	}
+	
+	private void editAccount() {
+		try{
+			getInfo();
+			//set producer
+			editQueueProduce = session.createTopic(ClientConstants.clientTopicName);
+			this.accountProducer = session.createProducer(editQueueProduce);
+			this.accountProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+			
+			//set consumer
+			editQueueConsume = session.createTemporaryTopic();
+			MessageConsumer responseConsumer = session.createConsumer(editQueueConsume);
+			responseConsumer.setMessageListener(this);
+			
+			TextMessage txtMessage = session.createTextMessage();
+			txtMessage.setText(this.username + " " + this.oldPass + " " + this.newPass);
+			txtMessage.setJMSReplyTo(editQueueProduce);
+			String correlationID = "editAccount";
+			txtMessage.setJMSCorrelationID(correlationID);
+			this.producer.send(txtMessage);
+		} catch (JMSException e){
+			System.err.println(e.getMessage());
+		}
+	}
 
 	public void onMessage(Message message) {
 
 			String messageText = null;
 			try {
-				if (message instanceof TextMessage) {
+				if (((TextMessage) message).getText().equals("edited")) {
+					System.out.println("Account edited. ");
+				}
+				else if (message instanceof TextMessage) {
 					TextMessage textMessage = (TextMessage) message;
 					messageText = textMessage.getText();
 

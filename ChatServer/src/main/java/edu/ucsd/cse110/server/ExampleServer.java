@@ -83,19 +83,47 @@ public class ExampleServer implements MessageListener {
         // Username, password verification
     	try {
     		//System.out.println(message.getJMSCorrelationID());
-			if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("verifyAccount")) {
+			if (message.getJMSCorrelationID() != null && (message.getJMSCorrelationID().equals("createAccount") ||
+					message.getJMSCorrelationID().equals("verifyAccount") || 
+					message.getJMSCorrelationID().equals("editAccount"))) {
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage)message).getText().split(" ");
 				String username = account[0];
 				String password = account[1];
-				String responseText = validate(username, password);
+				String newPassword = null;
+				if (message.getJMSCorrelationID().equals("editAccount")){
+					newPassword = account[2];
+				}
+				String responseText;
+				if (message.getJMSCorrelationID().equals("createAccount")){
+					responseText = create(username, password);
+				}
+				else if (message.getJMSCorrelationID().equals("verifyAccount")) {
+					responseText = validate(username, password);
+				}
+				else {
+					responseText = edit(username, password, newPassword);
+				}
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 				tempProducer.send(message.getJMSReplyTo(), response);
 				tempProducer.close();
 				return;
 			}
+    		/*if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("verifyAccount")) {
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				String[] account = ((TextMessage)message).getText().split(" ");
+				String username = account[0];
+				String password = account[1];
+				
+				response.setText(responseText);
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			}*/
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
@@ -139,7 +167,17 @@ public class ExampleServer implements MessageListener {
     	}
     }
     
+    public String create(String username, String password) {
+    	try{
+    		accounts.addAccount(username, password);
+    		return "created";
+    	} catch (AccountException e) {
+    		return e.getMessage();
+    	}
+    }
+    
     public static void main(String[] args) {
         new ExampleServer();
+        
     }
 }

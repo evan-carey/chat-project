@@ -24,7 +24,7 @@ public class ConnectingClient implements MessageListener {
 	private Destination consumerQueue;
 	private MessageProducer producer;
 	
-	private String username, password;
+	private String username, password, response;
 
 	public ConnectingClient() {
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
@@ -34,6 +34,8 @@ public class ConnectingClient implements MessageListener {
 			connection = connectionFactory.createConnection();
 			connection.start();
 			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+			System.out.print("Do you have an account? (y/n): ");
+			getResponse();
 			getAccountInfo();
 			// set producer
 			producerQueue = session.createTopic("client.messages");
@@ -45,19 +47,29 @@ public class ConnectingClient implements MessageListener {
 			MessageConsumer responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
 			
+			if ("n".equals(response)){
+				createAccount();
+			}
 			verifyAccount();
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());
 		}
 	}
 	
+	private void getResponse() {
+		Scanner keyboard = new Scanner(System.in);
+		this.response = keyboard.nextLine().trim();
+	}
+	
 	private void getAccountInfo() {
+		if ("n".equals(response)){
+			System.out.println("Please enter your new account info");
+		}
 		Scanner keyboard = new Scanner(System.in);
 		System.out.print("Enter username: ");
 		this.username = keyboard.nextLine().trim();
 		System.out.print("Enter password: ");
 		this.password = keyboard.nextLine().trim();
-
 	}
 
 	private void verifyAccount() {
@@ -74,6 +86,19 @@ public class ConnectingClient implements MessageListener {
 		}
 
 	}
+	
+	private void createAccount() {
+		try{
+			TextMessage txtMessage = session.createTextMessage();
+			txtMessage.setText(this.username + " " + this.password);
+			txtMessage.setJMSReplyTo(consumerQueue);
+			String correlationID = "createAccount";
+			txtMessage.setJMSCorrelationID(correlationID);
+			this.producer.send(txtMessage);
+		} catch (JMSException e){
+			System.err.println(e.getMessage());
+		}
+	}
 
 	private String createRandomString() {
 		Random random = new Random(System.currentTimeMillis());
@@ -83,7 +108,10 @@ public class ConnectingClient implements MessageListener {
 	
 	public void onMessage(Message message) {
 		try {
-			if (((TextMessage) message).getText().equals("valid")) {
+			if (((TextMessage) message).getText().equals("created")) {
+				System.out.println("Account created. Validating account.");
+			}
+			else if (((TextMessage) message).getText().equals("valid")) {
 				System.out.println("Account validated. Connecting to server.");
 				session.close();
 				connection.close();
