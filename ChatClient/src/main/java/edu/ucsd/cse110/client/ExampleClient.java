@@ -47,7 +47,9 @@ public class ExampleClient implements MessageListener {
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
 				ClientConstants.messageBrokerUrl);
 		
-		// Connection connection;
+		// attach shutdown hook to client
+		ShutdownHook.attachShutdownHook(this);
+		
 		try {
 
 			connection = connectionFactory.createConnection();
@@ -75,7 +77,6 @@ public class ExampleClient implements MessageListener {
 			// This class will handle the messages to the temp queue as well
 			responseConsumer.setMessageListener(this);
 			
-
 
 			enterServer();
 
@@ -110,16 +111,14 @@ public class ExampleClient implements MessageListener {
 				//they will be disconnected
 				if ("logoff".equalsIgnoreCase(message)) {
 					TextMessage txtMessage = session.createTextMessage();
-					txtMessage.setText("Client logged off");
+					txtMessage.setText(username + " has logged off");
 					
 					//txtMessage.setJMSReplyTo(tempDest);
 					//String correlationId = this.createRandomString();
 
 					// txtMessage.setJMSCorrelationID(correlationId);
 					this.producer.send(txtMessage);
-					System.out.println("Successfully logged off");
-					connection.close();
-
+					System.exit(0);
 				}
 				else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
@@ -210,7 +209,33 @@ public class ExampleClient implements MessageListener {
 		
 	}
 
-
+	/**
+	 * Shutdown Hook class to close connections when client logs off.
+	 */
+	private static class ShutdownHook {
+		ExampleClient client;
+		
+		private ShutdownHook(ExampleClient client) {
+			this.client = client;
+		}
+		public static void attachShutdownHook(final ExampleClient client) {
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				@Override
+				public void run() {
+					System.out.print("Logging off...");
+					try {
+						client.producer.close();
+						client.session.close();
+						client.connection.close();
+					} catch (JMSException e) {
+						e.printStackTrace();
+					}
+					System.out.println(" Done!");
+					
+				}
+			});
+		}
+	}
 
 	public static void main(String[] args) {
 		/*

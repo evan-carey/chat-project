@@ -1,11 +1,15 @@
 package edu.ucsd.cse110.server.accountinfo;
 
 import java.io.BufferedReader;
-import java.io.EOFException;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class Accounts {
 
@@ -30,12 +34,9 @@ public class Accounts {
 				accounts.put(account[0], account[1]);
 			}
 			reader.close();
-		} catch (EOFException e) {
-			e.printStackTrace();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -79,8 +80,31 @@ public class Accounts {
 		accounts.put(username, password);
 	}
 	
+	/**
+	 * Check accounts for a given username.
+	 * @param username The given username to be checked
+	 * @return True if accounts contains username, false otherwise
+	 */
 	public boolean hasUsername(String username) {
 		return accounts.containsKey(username);
 	}
 	
+	/**
+	 * Write contents of accounts hashmap to the accounts.txt file.
+	 * This method is called when the server application terminates.
+	 */
+	public void writeToFile() {
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(USER_FILE));
+			Iterator<Entry<String, String>> it = accounts.entrySet().iterator();
+			
+			while (it.hasNext()) {
+				Map.Entry<String, String> account = it.next();
+				out.write(account.getKey() + " " + account.getValue() + "\n");
+			}
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
+	}
 }

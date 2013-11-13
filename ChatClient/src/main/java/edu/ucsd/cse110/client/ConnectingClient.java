@@ -47,7 +47,7 @@ public class ConnectingClient implements MessageListener {
 			MessageConsumer responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
 			
-			if ("n".equals(response)){
+			if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)){
 				createAccount();
 			}
 			verifyAccount();
@@ -62,7 +62,7 @@ public class ConnectingClient implements MessageListener {
 	}
 	
 	private void getAccountInfo() {
-		if ("n".equals(response)){
+		if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)){
 			System.out.println("Please enter your new account info");
 		}
 		Scanner keyboard = new Scanner(System.in);
@@ -110,9 +110,9 @@ public class ConnectingClient implements MessageListener {
 		try {
 			if (((TextMessage) message).getText().equals("created")) {
 				System.out.println("Account created. Validating account.");
-			}
-			else if (((TextMessage) message).getText().equals("valid")) {
+			} else if (((TextMessage) message).getText().equals("valid")) {
 				System.out.println("Account validated. Connecting to server.");
+				producer.close();
 				session.close();
 				connection.close();
 				new ExampleClient(username);
