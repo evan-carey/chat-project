@@ -17,7 +17,7 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
-public class ExampleClient implements MessageListener {
+public class Client implements MessageListener {
 	
 	/** Username associated with the client */
 	private String username;
@@ -41,7 +41,7 @@ public class ExampleClient implements MessageListener {
 	private Destination editQueueConsume;
 
 
-	public ExampleClient(String username) {
+	public Client(String username) {
 		this.username = username;
 
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
@@ -213,12 +213,12 @@ public class ExampleClient implements MessageListener {
 	 * Shutdown Hook class to close connections when client logs off.
 	 */
 	private static class ShutdownHook {
-		ExampleClient client;
+		Client client;
 		
-		private ShutdownHook(ExampleClient client) {
+		private ShutdownHook(Client client) {
 			this.client = client;
 		}
-		public static void attachShutdownHook(final ExampleClient client) {
+		public static void attachShutdownHook(final Client client) {
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
 				public void run() {
@@ -240,12 +240,12 @@ public class ExampleClient implements MessageListener {
 	public static void main(String[] args) {
 		/*
 		 * NOTE: If you want to test the messaging without having to
-		 * log in first, create a new ExampleClient().
+		 * log in first, create a new Client().
 		 * If you want to test logging in too, create a new
 		 * ConnectingClient() instead.
 		 */
 		
-		// new ExampleClient();
+		// new Client();
 		new ConnectingClient();	
 	}
 

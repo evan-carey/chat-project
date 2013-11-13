@@ -115,7 +115,7 @@ public class ConnectingClient implements MessageListener {
 				producer.close();
 				session.close();
 				connection.close();
-				new ExampleClient(username);
+				new Client(username);
 			} else {
 				System.out.println(((TextMessage) message).getText());
 				System.out.println("Invalid account. Terminating...");

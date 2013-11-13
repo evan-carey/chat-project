@@ -9,11 +9,11 @@ import org.junit.Test;
 
 public class TestServer {
 	
-	private ExampleServer serverToTest;
+	private Server serverToTest;
 	
 	@Before
 	public void init() {
-		serverToTest = new ExampleServer();
+		serverToTest = new Server();
 	}
 	
 	@Test
