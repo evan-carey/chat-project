@@ -96,9 +96,10 @@ public class ExampleClient implements MessageListener {
 
 		
 		try {
+			
+			producer.send( session.createTextMessage("-a " + username) );
 						
 			while (flag) {
-				producer.send( session.createTextMessage("-a " + username) );
 				System.out.print(">>");
 				
 				// Now create the actual message you want to send
@@ -111,7 +112,7 @@ public class ExampleClient implements MessageListener {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("Client logged off");
 					
-					// txtMessage.setJMSReplyTo(tempDest);
+					//txtMessage.setJMSReplyTo(tempDest);
 					//String correlationId = this.createRandomString();
 
 					// txtMessage.setJMSCorrelationID(correlationId);

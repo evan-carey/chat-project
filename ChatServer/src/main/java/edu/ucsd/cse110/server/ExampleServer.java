@@ -100,10 +100,17 @@ public class ExampleServer implements MessageListener {
     	for( String s: onlineUsers.keySet() ) {
     		users+= s + "\n";
     	}
-    	this.replyProducer.send( dest, this.session.createTextMessage(users) );
+    	
+    	System.out.println( users);
+    	    	
+    	/** 
+    	 * Find a way to set the reply destination and were golden on this
+    	 */
+    	//this.replyProducer.send( dest, this.session.createTextMessage(users) );
     }
     
     private void handleMessage( TextMessage tm ) throws JMSException {
+    	  	
     	String text = tm.getText();
     	
     	switch( text.charAt(1) ) {
@@ -187,10 +194,16 @@ public class ExampleServer implements MessageListener {
                 String messageText = txtMsg.getText();
                 
                 if( messageText.contains("get") && messageText.contains("online") && messageText.contains("user") ) {
-                	txtMsg.setText("-g" + messageText);
-                	handleMessage( txtMsg );
                 	
+                	reportOnlineUsers( tm.getJMSDestination() );
                 	return;
+                	
+//                	txtMsg.setText("-g" + messageText);
+//                	Message tm1 = session.createTextMessage( "-g" );
+//                	tm.setJMSDestination(tm.getJMSReplyTo() );
+//                	handleMessage( session.createTextMessage("-g") );
+//                	
+//                	return;
                 }
                 
                 System.out.println(messageText);
@@ -206,7 +219,7 @@ public class ExampleServer implements MessageListener {
             //this is presumably a temporary queue created by the client
             this.replyProducer.send(response);
         } catch (JMSException e) {
-            //Handle the exception appropriately
+            e.printStackTrace();
         }
     }
     
