@@ -144,13 +144,18 @@ public class Server implements MessageListener {
 		try {
 			// System.out.println(message.getJMSCorrelationID());
 
-			if (message.getJMSCorrelationID() != null && (message.getJMSCorrelationID().equals("createAccount") || message.getJMSCorrelationID().equals("verifyAccount") || message.getJMSCorrelationID().equals("editAccount"))) {
+			if ((message.getJMSCorrelationID() != null) && (message.getJMSCorrelationID().equals("createAccount") || message.getJMSCorrelationID().equals("verifyAccount") || message.getJMSCorrelationID().equals("editAccount"))) {
 
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage) message).getText().split(" ");
+				System.out.println("Reading account info: " + ((TextMessage) message).getText());
+				if(((TextMessage) message).getText().equals("edited")){
+					return;
+				}
 				String username = account[0];
-				String password = account[1];
+				String password = null;
+				password = account[1];
 				String newPassword = null;
 				if (message.getJMSCorrelationID().equals("editAccount")) {
 					newPassword = account[2];
@@ -162,6 +167,7 @@ public class Server implements MessageListener {
 					responseText = validate(username, password);
 				} else {
 					responseText = edit(username, password, newPassword);
+					message.setJMSCorrelationID(null);
 				}
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
