@@ -27,7 +27,7 @@ public class Server implements MessageListener {
 	private boolean transacted = false;
 	private MessageProducer replyProducer;
 	private MessageProtocol messageProtocol;
-
+	private ServerRunChatRoom serverrunchatroom;//added by JW
 	/** User accounts */
 	private Accounts accounts;
 	private HashMap<String, String> onlineUsers;
@@ -43,6 +43,7 @@ public class Server implements MessageListener {
 			broker.setUseJmx(false);
 			broker.addConnector(ServerConstants.messageBrokerUrl);
 			broker.start();
+            serverrunchatroom=new ServerRunChatRoom();// added by JW
 		} catch (Exception e) {
 			// Handle the exception appropriately
 			System.err.println("Unable to initilize the server.");
@@ -163,6 +164,18 @@ public class Server implements MessageListener {
 				} else {
 					responseText = edit(username, password, newPassword);
 				}
+				response.setText(responseText);
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			}
+			
+			//added by JW
+			if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("listChatRoom")) {
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				String responseText = serverrunchatroom.transmitChatRoomList();
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 				tempProducer.send(message.getJMSReplyTo(), response);
