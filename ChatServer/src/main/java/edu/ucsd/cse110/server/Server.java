@@ -167,7 +167,7 @@ public class Server implements MessageListener {
 					responseText = validate(username, password);
 				} else {
 					responseText = edit(username, password, newPassword);
-					message.setJMSCorrelationID(null);
+					message.setJMSCorrelationID(null);//server will respond with regular message after verification
 				}
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());

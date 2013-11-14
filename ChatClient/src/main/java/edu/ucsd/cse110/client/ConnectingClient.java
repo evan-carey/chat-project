@@ -61,15 +61,45 @@ public class ConnectingClient implements MessageListener {
 		this.response = keyboard.nextLine().trim();
 	}
 	
+	private boolean isValidInput(String text){
+		if(text == null || text.length() <= 0 )
+			return false;
+	    char[] c = text.toCharArray();
+		for(int i = 0; i < c.length; i++){
+			if((c[i] >= 'A' && c[i] <='Z') || (c[i] >= 'a' && c[i] <='z') || (c[i] >= '0' && c[i] <='9') || c[i] == '_'){
+				continue;
+			}
+			else
+				return false;
+		}
+		
+		return true;
+	}
 	private void getAccountInfo() {
+		boolean InputAccepted = false;
 		if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)){
 			System.out.println("Please enter your new account info");
 		}
-		Scanner keyboard = new Scanner(System.in);
-		System.out.print("Enter username: ");
-		this.username = keyboard.nextLine().trim();
-		System.out.print("Enter password: ");
-		this.password = keyboard.nextLine().trim();
+		
+		while(!InputAccepted){
+			Scanner keyboard = new Scanner(System.in);
+			System.out.print("Enter username: ");
+			this.username = keyboard.nextLine().trim();
+			InputAccepted = isValidInput(this.username);
+			if(InputAccepted == false)
+				System.out.println
+					("Username may only contain uppercase letters, lowercase letters, numbers, and underscores");
+		}
+		InputAccepted = false;
+		while(!InputAccepted){
+			Scanner keyboard = new Scanner(System.in);
+			System.out.print("Enter password: ");
+			this.password = keyboard.nextLine().trim();
+			InputAccepted = isValidInput(this.username);
+			if(InputAccepted == false)
+				System.out.println
+					("Password may only contain uppercase letters, lowercase letters, numbers, and underscores");
+		}
 	}
 
 	private void verifyAccount() {
