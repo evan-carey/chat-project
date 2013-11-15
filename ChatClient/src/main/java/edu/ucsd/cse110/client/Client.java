@@ -1,6 +1,5 @@
 package edu.ucsd.cse110.client;
 
-
 import java.util.Random;
 import java.util.Scanner;
 
@@ -12,13 +11,14 @@ import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
+import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 public class Client implements MessageListener {
-	
+
 	/** Username associated with the client */
 	private String username;
 	private String oldPass;
@@ -26,40 +26,54 @@ public class Client implements MessageListener {
 
 	private static int ackMode;
 	// private static String clientQueueName;
-	
-	//private static String clientTopicName;
+
+	// private static String clientTopicName;
 	private boolean flag = true;
 	private boolean transacted = false;
-	
-	//Create the necessary variables to connect to the server 
+
+	// Create the necessary variables to connect to the server
 	private MessageProducer producer;
 	private MessageProducer accountProducer;
 	private Session session;
 	private Connection connection;
-	
+
 	private Destination editQueueProduce;
 	private Destination editQueueConsume;
 
+	private Destination adminQueue;
+	private Destination consumeQueue;
+	// Randomly Generated Client Queue
+	private String clientQueue;
+	// Randomly Generated Client Topic
+	private String clientTopic;
 
 	public Client(String username) {
 		this.username = username;
 
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
 				ClientConstants.messageBrokerUrl);
-		
+		System.out.println(">>>>>>>>>>>>>>" + username);
 		// attach shutdown hook to client
 		ShutdownHook.attachShutdownHook(this);
-		
+
 		try {
 
 			connection = connectionFactory.createConnection();
 			connection.start();
-			session = connection.createSession(transacted, ClientConstants.ackMode);
-			Destination adminQueue = session.createTopic(ClientConstants.clientTopicName);
+			session = connection.createSession(transacted,
+					ClientConstants.ackMode);
+
+			// adminQueue =
+			// session.createTopic(ClientConstants.consumeTopicName);
+
+			// client Produces to adminQueue ("server.messages")
+			adminQueue = session.createQueue(ClientConstants.consumeTopicName);
 
 			// Setup a message producer to send message to the queue the server
 			// is consuming from
 			this.producer = session.createProducer(adminQueue);
+			System.out.println("server" + adminQueue);
+
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
 			// Create a temporary queue that this client will listen for
@@ -68,19 +82,24 @@ public class Client implements MessageListener {
 			// application a client should reuse
 			// the same temp queue for each message to the server...one temp
 			// queue per client
-			//Destination tempDest = session.createTemporaryTopic();
-			//validate(tempDest);
-			
-			Destination consumeTopic = session.createTopic(ClientConstants.consumeTopicName);
-			MessageConsumer responseConsumer = session.createConsumer(consumeTopic);
+			// Destination tempDest = session.createTemporaryTopic();
+			// validate(tempDest);
+
+			// client consumes from a randomly generated queue
+			clientQueue = createRandomString();
+			consumeQueue = session.createQueue(clientQueue);
+			MessageConsumer responseConsumer = session
+					.createConsumer(consumeQueue);
+			System.out.println("client:" + consumeQueue);
+			// Destination consumeTopic = session.createTopic(clientTopic);
+			// MessageConsumer responseConsumer =
+			// session.createConsumer(consumeTopic);
 
 			// This class will handle the messages to the temp queue as well
 			responseConsumer.setMessageListener(this);
-			
 
 			enterServer();
 
-			
 		} catch (JMSException e) {
 			// Handle the exception appropriately
 		}
@@ -95,59 +114,65 @@ public class Client implements MessageListener {
 
 	public boolean enterServer() {
 
-		
 		try {
-			
-			producer.send( session.createTextMessage("-a " + username) );
-						
+
+			TextMessage tm = session.createTextMessage("-a " + username);
+			tm.setJMSCorrelationID(username);
+			tm.setJMSReplyTo(consumeQueue);
+			producer.send(tm);
+
 			while (flag) {
-				System.out.print(">>");
-				
+				System.out.print("[" + username + "]: ");
+
 				// Now create the actual message you want to send
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
 
-				//If the user types the keyword "logoff"
-				//they will be disconnected
+				// If the user types the keyword "logoff"
+				// they will be disconnected
 				if ("logoff".equalsIgnoreCase(message)) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText(username + " has logged off");
-					
-					//txtMessage.setJMSReplyTo(tempDest);
-					//String correlationId = this.createRandomString();
+					txtMessage.setJMSCorrelationID(username);
+					// txtMessage.setJMSReplyTo(tempDest);
+					// String correlationId = this.createRandomString();
 
 					// txtMessage.setJMSCorrelationID(correlationId);
 					this.producer.send(txtMessage);
 					System.exit(0);
-				}
-				else if ("editAccount".equalsIgnoreCase(message)) {
+				} else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
-				}
-				else if ("Command:enterchatroom".equalsIgnoreCase(message)){
+				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
 					new EnterChatRoom(username);
-				}
-				else {
+				} else if (message.equals("disconnect")) {
+					setProducer(adminQueue);
+				} else {
 
-				TextMessage txtMessage = session.createTextMessage();
-				txtMessage.setText(message);
+					TextMessage txtMessage = session.createTextMessage();
+					txtMessage.setText(message);
+					txtMessage.setJMSCorrelationID(username);
+					txtMessage.setJMSReplyTo(consumeQueue);
+					txtMessage.setJMSDestination(adminQueue);
+					// Set the reply to field to the temp queue you created
+					// above,
+					// this is the queue the server
+					// will respond to
+					// txtMessage.setJMSReplyTo(tempDest);
 
-				// Set the reply to field to the temp queue you created above,
-				// this is the queue the server
-				// will respond to
-				// txtMessage.setJMSReplyTo(tempDest);
-
-				// Set a correlation ID so when you get a response you know
-				// which sent message the response is for
-				// If there is never more than one outstanding message to the
-				// server then the
-				// same correlation ID can be used for all the messages...if
-				// there is more than one outstanding
-				// message to the server you would presumably want to associate
-				// the correlation ID with this
-				// message somehow...a Map works good
-				//String correlationId = this.createRandomString();
-				// txtMessage.setJMSCorrelationID(correlationId);
-				this.producer.send(txtMessage);
+					// Set a correlation ID so when you get a response you know
+					// which sent message the response is for
+					// If there is never more than one outstanding message to
+					// the
+					// server then the
+					// same correlation ID can be used for all the messages...if
+					// there is more than one outstanding
+					// message to the server you would presumably want to
+					// associate
+					// the correlation ID with this
+					// message somehow...a Map works good
+					// String correlationId = this.createRandomString();
+					// txtMessage.setJMSCorrelationID(correlationId);
+					this.producer.send(txtMessage);
 				}
 			}
 			return true;
@@ -156,9 +181,10 @@ public class Client implements MessageListener {
 		}
 		return false;
 	}
-	
+
 	private void getInfo() {
-		System.out.println("Please enter your old account info along with a new password. ");
+		System.out
+				.println("Please enter your old account info along with a new password. ");
 		Scanner keyboard = new Scanner(System.in);
 		System.out.print("Enter username: ");
 		this.username = keyboard.nextLine().trim();
@@ -167,50 +193,66 @@ public class Client implements MessageListener {
 		System.out.print("Enter new password: ");
 		this.newPass = keyboard.nextLine().trim();
 	}
-	
+
 	private void editAccount() {
-		try{
+		try {
 			getInfo();
-			//set producer
-			editQueueProduce = session.createTopic(ClientConstants.clientTopicName);
+			// set producer
+			editQueueProduce = session
+					.createTopic(ClientConstants.clientTopicName);
 			this.accountProducer = session.createProducer(editQueueProduce);
 			this.accountProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			
-			//set consumer
+
+			// set consumer
 			editQueueConsume = session.createTemporaryTopic();
-			MessageConsumer responseConsumer = session.createConsumer(editQueueConsume);
+			MessageConsumer responseConsumer = session
+					.createConsumer(editQueueConsume);
 			responseConsumer.setMessageListener(this);
-			
+
 			TextMessage txtMessage = session.createTextMessage();
-			txtMessage.setText(this.username + " " + this.oldPass + " " + this.newPass);
+			txtMessage.setText(this.username + " " + this.oldPass + " "
+					+ this.newPass);
 			txtMessage.setJMSReplyTo(editQueueProduce);
 			String correlationID = "editAccount";
 			txtMessage.setJMSCorrelationID(correlationID);
 			this.producer.send(txtMessage);
-		} catch (JMSException e){
+		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
 	}
 
 	public void onMessage(Message message) {
 
-			String messageText = null;
-			try {
-				if (((TextMessage) message).getText().equals("edited")) {
-					System.out.println("Account edited. ");
-				}
-				else if (message instanceof TextMessage) {
-					TextMessage textMessage = (TextMessage) message;
-					messageText = textMessage.getText();
+		String messageText = null;
+		try {
+			if (((TextMessage) message).getText().equals("edited")) {
+				System.out.println("Account edited. ");
+			} else if (message instanceof TextMessage) {
+				TextMessage textMessage = (TextMessage) message;
+				messageText = textMessage.getText();
 
-					
-					System.out.print("\n\"" + messageText 
-							+ "\"\n\n>>");
-				}
-			} catch (JMSException e) {
-				// Handle the exception appropriately
+				System.out.println("["+message.getJMSCorrelationID()+"]: "+messageText);
+
+				if (messageText.equals("connect"))
+					setProducer(message.getJMSReplyTo());
+				else if (messageText.equals("disconnect"))
+					setProducer(adminQueue);
 			}
-		
+		} catch (JMSException e) {
+			// Handle the exception appropriately
+		}
+
+	}
+
+	private void setProducer(Destination dest) throws JMSException {
+		if (dest instanceof Queue) {
+			// System.out.println(((Queue) dest).getQueueName());
+			Destination suscribe = (Queue) dest;
+			//adminQueue = (Queue)dest;
+			//System.out.println(suscribe);
+			this.producer = session.createProducer(suscribe);
+			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+		}
 	}
 
 	/**
@@ -218,10 +260,11 @@ public class Client implements MessageListener {
 	 */
 	private static class ShutdownHook {
 		Client client;
-		
+
 		private ShutdownHook(Client client) {
 			this.client = client;
 		}
+
 		public static void attachShutdownHook(final Client client) {
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
@@ -235,7 +278,7 @@ public class Client implements MessageListener {
 						e.printStackTrace();
 					}
 					System.out.println(" Done!");
-					
+
 				}
 			});
 		}
@@ -243,14 +286,13 @@ public class Client implements MessageListener {
 
 	public static void main(String[] args) {
 		/*
-		 * NOTE: If you want to test the messaging without having to
-		 * log in first, create a new Client().
-		 * If you want to test logging in too, create a new
-		 * ConnectingClient() instead.
+		 * NOTE: If you want to test the messaging without having to log in
+		 * first, create a new Client(). If you want to test logging in too,
+		 * create a new ConnectingClient() instead.
 		 */
-		
+
 		// new Client();
-		new ConnectingClient();	
+		new ConnectingClient();
 	}
 
 }

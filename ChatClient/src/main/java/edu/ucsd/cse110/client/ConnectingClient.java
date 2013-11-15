@@ -38,7 +38,7 @@ public class ConnectingClient implements MessageListener {
 			getResponse();
 			getAccountInfo();
 			// set producer
-			producerQueue = session.createTopic("client.messages");
+			producerQueue = session.createQueue("server.messages");
 			this.producer = session.createProducer(producerQueue);
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			
@@ -79,7 +79,7 @@ public class ConnectingClient implements MessageListener {
 			txtMessage.setJMSReplyTo(consumerQueue);
 			String correlationId = "verifyAccount";
 			txtMessage.setJMSCorrelationID(correlationId);
-			this.producer.send(txtMessage);
+			this.producer.send(producerQueue, txtMessage);
 			//System.out.println("Connecting to server...");
 		} catch (JMSException e) {
 			System.err.println(e.getMessage());
