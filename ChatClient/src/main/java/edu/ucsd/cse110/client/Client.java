@@ -121,6 +121,8 @@ public class Client implements MessageListener {
 					System.exit(0);
 				} else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
+				} else if ("Command:enterchatroom".equalsIgnoreCase(message)){
+					new EnterChatRoom(username);
 				} else {
 
 					TextMessage txtMessage = session.createTextMessage();
@@ -147,6 +149,7 @@ public class Client implements MessageListener {
 					// txtMessage.setJMSCorrelationID(correlationId);
 					this.producer.send(txtMessage);
 				}
+
 			}
 			return true;
 		} catch (JMSException e) {
