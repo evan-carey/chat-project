@@ -159,6 +159,9 @@ public class Server implements MessageListener {
 		boolean chatflag = false;
 		try {
 			text = tm.getText();
+			if(text.length() <= 0){
+				return;
+			}
 			if (text.charAt(0) == '-') {
 				handleMessage(message);
 			}
@@ -179,8 +182,13 @@ public class Server implements MessageListener {
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage) message).getText().split(" ");
+				System.out.println("Reading account info: " + ((TextMessage) message).getText());
+				if(((TextMessage) message).getText().equals("edited")){
+					return;
+				}
 				String username = account[0];
-				String password = account[1];
+				String password = null;
+				password = account[1];
 				String newPassword = null;
 				if (message.getJMSCorrelationID().equals("editAccount")) {
 					newPassword = account[2];
@@ -193,6 +201,7 @@ public class Server implements MessageListener {
 					responseText = validate(username, password);
 				} else {
 					responseText = edit(username, password, newPassword);
+					message.setJMSCorrelationID(null);//server will respond with regular message after verification
 				}
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());

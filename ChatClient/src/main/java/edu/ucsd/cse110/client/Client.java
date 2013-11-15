@@ -35,6 +35,7 @@ public class Client implements MessageListener {
 	private MessageProducer producer;
 	private MessageProducer accountProducer;
 	private Session session;
+	private Session accountSession;
 	private Connection connection;
 
 	private Destination editQueueProduce;
@@ -47,12 +48,14 @@ public class Client implements MessageListener {
 	// Randomly Generated Client Topic
 	private String clientTopic;
 
+
 	public Client(String username) {
 		this.username = username;
 
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
 				ClientConstants.messageBrokerUrl);
 		System.out.println(">>>>>>>>>>>>>>" + username);
+
 		// attach shutdown hook to client
 		ShutdownHook.attachShutdownHook(this);
 
@@ -63,11 +66,13 @@ public class Client implements MessageListener {
 			session = connection.createSession(transacted,
 					ClientConstants.ackMode);
 
+
 			// adminQueue =
 			// session.createTopic(ClientConstants.consumeTopicName);
 
 			// client Produces to adminQueue ("server.messages")
 			adminQueue = session.createQueue(ClientConstants.consumeTopicName);
+
 
 			// Setup a message producer to send message to the queue the server
 			// is consuming from
@@ -88,12 +93,12 @@ public class Client implements MessageListener {
 			// client consumes from a randomly generated queue
 			clientQueue = createRandomString();
 			consumeQueue = session.createQueue(clientQueue);
-			MessageConsumer responseConsumer = session
-					.createConsumer(consumeQueue);
+			MessageConsumer responseConsumer = session.createConsumer(consumeQueue);
 			System.out.println("client:" + consumeQueue);
 			// Destination consumeTopic = session.createTopic(clientTopic);
 			// MessageConsumer responseConsumer =
 			// session.createConsumer(consumeTopic);
+
 
 			// This class will handle the messages to the temp queue as well
 			responseConsumer.setMessageListener(this);
@@ -133,7 +138,9 @@ public class Client implements MessageListener {
 				if ("logoff".equalsIgnoreCase(message)) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText(username + " has logged off");
+
 					txtMessage.setJMSCorrelationID(username);
+
 					// txtMessage.setJMSReplyTo(tempDest);
 					// String correlationId = this.createRandomString();
 
@@ -182,16 +189,44 @@ public class Client implements MessageListener {
 		return false;
 	}
 
+	
+	private boolean isValidInput(String text){
+		if(text == null || text.length() <= 0 )
+			return false;
+	    char[] c = text.toCharArray();
+		for(int i = 0; i < c.length; i++){
+			if((c[i] >= 'A' && c[i] <='Z') || (c[i] >= 'a' && c[i] <='z') || (c[i] >= '0' && c[i] <='9') || c[i] == '_'){
+				continue;
+			}
+			else
+				return false;
+		}
+		
+		return true;
+	}
+
 	private void getInfo() {
-		System.out
-				.println("Please enter your old account info along with a new password. ");
+		System.out.println("Please enter your old account info along with a new password. ");
+
+		boolean InputAccepted = false;
+		
 		Scanner keyboard = new Scanner(System.in);
 		System.out.print("Enter username: ");
 		this.username = keyboard.nextLine().trim();
+		
+
 		System.out.print("Enter old password: ");
 		this.oldPass = keyboard.nextLine().trim();
-		System.out.print("Enter new password: ");
-		this.newPass = keyboard.nextLine().trim();
+		
+		while(!InputAccepted){
+			Scanner keyboard2 = new Scanner(System.in);
+			System.out.print("Enter new password: ");
+			this.newPass = keyboard2.nextLine().trim();
+			InputAccepted = isValidInput(this.newPass);
+			if(InputAccepted == false)
+				System.out.println
+					("Password may only contain uppercase letters, lowercase letters, numbers, and underscores");
+		}
 	}
 
 	private void editAccount() {
@@ -201,6 +236,7 @@ public class Client implements MessageListener {
 			editQueueProduce = session
 					.createTopic(ClientConstants.clientTopicName);
 			this.accountProducer = session.createProducer(editQueueProduce);
+
 			this.accountProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
 			// set consumer
@@ -215,7 +251,11 @@ public class Client implements MessageListener {
 			txtMessage.setJMSReplyTo(editQueueProduce);
 			String correlationID = "editAccount";
 			txtMessage.setJMSCorrelationID(correlationID);
-			this.producer.send(txtMessage);
+
+			//this.producer.send(txtMessage);
+
+			this.accountProducer.send(txtMessage);
+
 		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
@@ -227,6 +267,8 @@ public class Client implements MessageListener {
 		try {
 			if (((TextMessage) message).getText().equals("edited")) {
 				System.out.println("Account edited. ");
+				accountProducer.close();
+				session.close();
 			} else if (message instanceof TextMessage) {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
