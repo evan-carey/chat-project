@@ -25,12 +25,13 @@ public class ConnectingClient implements MessageListener {
 	private MessageProducer producer;
 	
 	private String username, password, response;
+	private int maxAttempts;
 
 	public ConnectingClient() {
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
 				"tcp://localhost:61616");
+		maxAttempts = 3;
 		try {
-
 			connection = connectionFactory.createConnection();
 			connection.start();
 			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
@@ -147,9 +148,19 @@ public class ConnectingClient implements MessageListener {
 				connection.close();
 				new Client(username);
 			} else {
+				maxAttempts -= 1;
 				System.out.println(((TextMessage) message).getText());
-				System.out.println("Invalid account. Terminating...");
-				System.exit(0);
+				if(maxAttempts > 0){
+					System.out.println("Invalid account. You have " + maxAttempts + " attempts remaining.");
+					System.out.println("Hit Return to try again.");
+					getResponse();
+					getAccountInfo();
+					verifyAccount();
+				}
+				else{
+					System.out.println("Invalid account. Terminating...");
+					System.exit(0);
+				}
 			}
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());

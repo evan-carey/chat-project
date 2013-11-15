@@ -134,6 +134,9 @@ public class Server implements MessageListener {
 		String text = "";
 		try {
 			text = tm.getText();
+			if(text.length() <= 0){
+				return;
+			}
 			if (text.charAt(0) == '-') {
 				handleMessage(tm);
 			}
