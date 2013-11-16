@@ -16,21 +16,22 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 
 public abstract class AbstractClient implements MessageListener {
 
-	private Connection connection;
-	private Session session;
-	private Destination producerQueue, consumerQueue;
-	private MessageProducer producer;
-	private MessageConsumer consumer;
+	protected Connection connection;
+	protected Session session;
+	protected Destination producerQueue, consumerQueue;
+	protected MessageProducer producer;
+	protected MessageConsumer consumer;
 
-	private String username, password;
+	protected String username, password;
 
 	public AbstractClient() {
 		// initialize connection factory
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(ClientConstants.messageBrokerUrl);
-		// intialize shutdown hook
+		// initialize shutdown hook
 		ShutdownHook.attachShutdownHook(this);
 		try {
 			this.connection = connectionFactory.createConnection();
+			this.connection.start();
 			this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 			setProducer("");
 			setConsumer("");
@@ -102,7 +103,7 @@ public abstract class AbstractClient implements MessageListener {
 	 * @param text The string to be validated
 	 * @return True if text is valid, false otherwise
 	 */
-	private boolean isValidInput(String text) {
+	protected boolean isValidInput(String text) {
 		return text.matches("^[a-zA-z0-9_]+$");
 	}
 	

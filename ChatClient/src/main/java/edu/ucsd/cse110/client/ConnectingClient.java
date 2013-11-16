@@ -1,105 +1,56 @@
 package edu.ucsd.cse110.client;
 
-import java.util.Random;
 import java.util.Scanner;
 
-import javax.jms.Connection;
-import javax.jms.DeliveryMode;
-import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageListener;
-import javax.jms.MessageProducer;
-import javax.jms.Session;
 import javax.jms.TextMessage;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
+public class ConnectingClient extends AbstractClient {
 
-public class ConnectingClient implements MessageListener {
-
-	private Connection connection;
-	private Session session;
-	private Destination producerQueue;
-	private Destination consumerQueue;
-	private MessageProducer producer;
-	
-	private String username, password, response;
+	private String response;
 	private int maxAttempts;
 
 	public ConnectingClient() {
-		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-				"tcp://localhost:61616");
+		super();
 		maxAttempts = 3;
-		try {
-			connection = connectionFactory.createConnection();
-			connection.start();
-			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-			System.out.print("Do you have an account? (y/n): ");
-			getResponse();
-			getAccountInfo();
-			// set producer
-			producerQueue = session.createQueue("server.messages");
-			this.producer = session.createProducer(producerQueue);
-			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			
-			// set consumer
-			consumerQueue = session.createTemporaryTopic();
-			MessageConsumer responseConsumer = session.createConsumer(consumerQueue);
-			responseConsumer.setMessageListener(this);
-			
-			if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)){
-				createAccount();
-			}
-			verifyAccount();
-		} catch (JMSException e) {
-			System.out.println(e.getMessage());
+		System.out.print("Do you have an account? (y/n): ");
+		getResponse();
+		getAccountInfo();
+		if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)) {
+			createAccount();
 		}
+		verifyAccount();
+
 	}
-	
+
 	private void getResponse() {
 		Scanner keyboard = new Scanner(System.in);
 		this.response = keyboard.nextLine().trim();
 	}
-	
-	private boolean isValidInput(String text){
-		if(text == null || text.length() <= 0 )
-			return false;
-	    char[] c = text.toCharArray();
-		for(int i = 0; i < c.length; i++){
-			if((c[i] >= 'A' && c[i] <='Z') || (c[i] >= 'a' && c[i] <='z') || (c[i] >= '0' && c[i] <='9') || c[i] == '_'){
-				continue;
-			}
-			else
-				return false;
-		}
-		
-		return true;
-	}
+
 	private void getAccountInfo() {
 		boolean InputAccepted = false;
-		if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)){
+		if ("n".equalsIgnoreCase(response) || "no".equalsIgnoreCase(response)) {
 			System.out.println("Please enter your new account info");
 		}
-		
-		while(!InputAccepted){
+
+		while (!InputAccepted) {
 			Scanner keyboard = new Scanner(System.in);
 			System.out.print("Enter username: ");
 			this.username = keyboard.nextLine().trim();
 			InputAccepted = isValidInput(this.username);
-			if(InputAccepted == false)
-				System.out.println
-					("Username may only contain uppercase letters, lowercase letters, numbers, and underscores");
+			if (InputAccepted == false)
+				System.out.println("Username may only contain uppercase letters, lowercase letters, numbers, and underscores");
 		}
 		InputAccepted = false;
-		while(!InputAccepted){
+		while (!InputAccepted) {
 			Scanner keyboard = new Scanner(System.in);
 			System.out.print("Enter password: ");
 			this.password = keyboard.nextLine().trim();
 			InputAccepted = isValidInput(this.username);
-			if(InputAccepted == false)
-				System.out.println
-					("Password may only contain uppercase letters, lowercase letters, numbers, and underscores");
+			if (InputAccepted == false)
+				System.out.println("Password may only contain uppercase letters, lowercase letters, numbers, and underscores");
 		}
 	}
 
@@ -111,32 +62,26 @@ public class ConnectingClient implements MessageListener {
 			String correlationId = "verifyAccount";
 			txtMessage.setJMSCorrelationID(correlationId);
 			this.producer.send(producerQueue, txtMessage);
-			//System.out.println("Connecting to server...");
+			// System.out.println("Connecting to server...");
 		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
 
 	}
-	
+
 	private void createAccount() {
-		try{
+		try {
 			TextMessage txtMessage = session.createTextMessage();
 			txtMessage.setText(this.username + " " + this.password);
 			txtMessage.setJMSReplyTo(consumerQueue);
 			String correlationID = "createAccount";
 			txtMessage.setJMSCorrelationID(correlationID);
 			this.producer.send(txtMessage);
-		} catch (JMSException e){
+		} catch (JMSException e) {
 			System.err.println(e.getMessage());
 		}
 	}
 
-	private String createRandomString() {
-		Random random = new Random(System.currentTimeMillis());
-		long randomLong = random.nextLong();
-		return Long.toHexString(randomLong);
-	}
-	
 	public void onMessage(Message message) {
 		try {
 			if (((TextMessage) message).getText().equals("created")) {
@@ -150,14 +95,13 @@ public class ConnectingClient implements MessageListener {
 			} else {
 				maxAttempts -= 1;
 				System.out.println(((TextMessage) message).getText());
-				if(maxAttempts > 0){
+				if (maxAttempts > 0) {
 					System.out.println("Invalid account. You have " + maxAttempts + " attempts remaining.");
 					System.out.println("Hit Return to try again.");
 					getResponse();
 					getAccountInfo();
 					verifyAccount();
-				}
-				else{
+				} else {
 					System.out.println("Invalid account. Terminating...");
 					System.exit(0);
 				}
