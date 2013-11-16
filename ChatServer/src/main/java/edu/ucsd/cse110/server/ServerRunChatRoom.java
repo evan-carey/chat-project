@@ -28,6 +28,7 @@ public class ServerRunChatRoom {
 	public static final String DEFAULTROOM_1 = "CHATROOM_1";
 	private static Set<Destination> CHATROOMLIST;
 	private static Set<String> CHATROOMSTINGLIST;
+	private int numberOfRooms = 2;
 	
 	public ServerRunChatRoom() throws JMSException{ //Setup Default chatroom and get an initilized chatroom list
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(ServerConstants.messageBrokerUrl);
@@ -90,5 +91,58 @@ public class ServerRunChatRoom {
 			return messageText;
 		}
 
-
+	/**
+	 * Accessor method that finds a room
+	 * @parameter 	String: Room to search for
+	 * @return 		Boolean: True if room exists, false otherwise
+	 * 
+	 */
+	public boolean roomExists(String roomToFind) {
+		for (String i:this.displayChatRoomList()){
+			if(i.equals(roomToFind)){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Accessor method that returns the number of rooms that exist
+	 * @parameter 	None
+	 * @return 		integer: The number of rooms that exist
+	 * 
+	 */
+	public int getNumberRooms() {
+		return numberOfRooms;
+	}
+	
+	
+	/**
+	 * Removes the specified room
+	 * @parameter 	String: room to remove
+	 * @return 		true is the room was removed, false otherwise
+	 * 
+	 */
+	public boolean removeRoom(String roomToRemove) {
+		
+		//Stop user from removing default rooms
+		if(roomToRemove.equals("CHATROOM") || roomToRemove.equals("CHATROOM_1")){
+			return false;
+		}
+		
+		for (String i:this.displayChatRoomList()){
+			if(i.equals(roomToRemove)){
+				//Remove room from both lists
+				CHATROOMLIST.remove(roomToRemove);
+				CHATROOMSTINGLIST.remove(roomToRemove);
+				
+				//decrement the number of rooms
+				numberOfRooms--;
+				return true;
+			}
+		}
+		return false;
+	}
 }
+
+
