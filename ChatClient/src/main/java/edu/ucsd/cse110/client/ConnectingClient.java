@@ -24,9 +24,15 @@ public class ConnectingClient extends AbstractClient {
 
 	}
 
-	private void getResponse() {
+	public void getResponse() {
 		Scanner keyboard = new Scanner(System.in);
 		this.response = keyboard.nextLine().trim();
+	}
+	
+	public String returnResponse(){
+		String LastInput = null;
+		LastInput = this.response;
+		return LastInput;
 	}
 
 	private void getAccountInfo() {
