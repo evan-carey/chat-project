@@ -9,7 +9,7 @@ public abstract class ServerConstants {
     //private static String messageQueueName;
     public static String messageBrokerUrl;
     public static String messageTopicName;
-    
+    public static String publicBroadcast;
     // server-to-client topic
     public static String produceTopicName;
 	
@@ -20,6 +20,7 @@ public abstract class ServerConstants {
         messageBrokerUrl = "tcp://localhost:61616";
         messageTopicName = "client.messages";
         produceTopicName = "server.messages";
+        publicBroadcast = "server.broadcast";
         ackMode = Session.AUTO_ACKNOWLEDGE;
     }
     

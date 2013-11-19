@@ -10,6 +10,7 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.TextMessage;
 
+
 public class Client extends AbstractClient {
 
 	/** Username associated with the client */
@@ -20,6 +21,8 @@ public class Client extends AbstractClient {
 
 	private Destination editQueueProduce;
 	private Destination editQueueConsume;
+    private Destination broadcastTopic;
+    
 	
 
 	public Client(String username) {
@@ -31,8 +34,9 @@ public class Client extends AbstractClient {
 	}
 
 	public void enterServer() {
-
+		
 		try {
+			//broadcastTopic = this.session.createTopic("server.broadcast");
 			TextMessage tm = session.createTextMessage("-a " + username);
 			tm.setJMSCorrelationID(username);
 			tm.setJMSReplyTo(consumerQueue);
@@ -55,12 +59,23 @@ public class Client extends AbstractClient {
 
 					this.producer.send(txtMessage);
 					System.exit(0);
+				
 				} else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
+				
 				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
 					new EnterChatRoom(username);
+				
 				} else if (message.equals("disconnect")) {
+					TextMessage txtMessage = session.createTextMessage();
+					txtMessage.setText("disconnect");
+					this.producer.send(txtMessage);
+					//txtMessage.setJMSCorrelationID("disconnect");
+					//txtMessage.setJMSReplyTo(consumerQueue);
 					setProducer(producerQueue);
+				
+				/*} else if(message.equals("setbroadcast")){
+				*/	
 				} else {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText(message);
@@ -145,6 +160,10 @@ public class Client extends AbstractClient {
 					setProducer(message.getJMSReplyTo());
 				else if (messageText.equals("disconnect"))
 					setProducer(producerQueue);
+				else if (messageText.equals("setbroadcast")){
+					setProducer(message.getJMSReplyTo());
+					setConsumer(producerTopic);
+				}
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();

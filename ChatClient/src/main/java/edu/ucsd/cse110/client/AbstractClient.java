@@ -11,6 +11,7 @@ import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.Session;
+import javax.jms.Topic;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -18,7 +19,7 @@ public abstract class AbstractClient implements MessageListener {
 
 	protected Connection connection;
 	protected Session session;
-	protected Destination producerQueue, consumerQueue;
+	protected Destination producerQueue, consumerQueue, producerTopic, consumerTopic;
 	protected MessageProducer producer;
 	protected MessageConsumer consumer;
 
@@ -48,6 +49,7 @@ public abstract class AbstractClient implements MessageListener {
 	public void setProducer(String queue) throws JMSException {
 		String queueName = queue == null || queue.equals("") ? ClientConstants.consumeTopicName : queue;
 		this.producerQueue = session.createQueue(queueName);
+		this.producerTopic = session.createTopic(ClientConstants.broadcastTopic); //for the time being the producerTopic by default to server.broadcast
 		this.producer = session.createProducer(producerQueue);
 		this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 	}
@@ -55,6 +57,11 @@ public abstract class AbstractClient implements MessageListener {
 		if (dest instanceof Queue) {
 			Destination queue = (Queue) dest;
 			this.producer = session.createProducer(queue);
+			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+		}
+		if(dest instanceof Topic){
+			Destination topic = (Topic) dest;
+			this.producer = session.createProducer(topic);
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 		}
 	}
@@ -74,6 +81,11 @@ public abstract class AbstractClient implements MessageListener {
 		if (dest instanceof Queue) {
 			Destination queue = (Queue) dest;
 			this.consumer = session.createConsumer(queue);
+			this.consumer.setMessageListener(this);
+		}
+		if(dest instanceof Topic){
+			Destination topic = (Topic) dest;
+			this.consumer = session.createConsumer(topic);
 			this.consumer.setMessageListener(this);
 		}
 	}

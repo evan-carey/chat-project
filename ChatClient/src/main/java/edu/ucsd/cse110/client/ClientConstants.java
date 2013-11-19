@@ -8,6 +8,7 @@ public abstract class ClientConstants {
 
     public static String messageBrokerUrl;
 	public static String clientTopicName;
+	public static String broadcastTopic;
 	public static int ackMode;
 	
 	// server-to-client topic
@@ -20,7 +21,7 @@ public abstract class ClientConstants {
 		clientTopicName = "client.messages";
 		ackMode = Session.AUTO_ACKNOWLEDGE;
 		consumeTopicName = "server.messages";
-
+        broadcastTopic = "client.broadcast";
 	}
 	
 	

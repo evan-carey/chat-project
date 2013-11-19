@@ -29,12 +29,15 @@ public class Server implements MessageListener {
 	private MessageProducer replyProducer;
 	private MessageProtocol messageProtocol;
 	private ServerRunChatRoom serverrunchatroom;// added by JW
+	private Destination broadcastTopic;
+	private Destination adminQueue;
 	/** User accounts */
 	private Accounts accounts;
 	private HashMap<String, String> onlineUsers;
 
 	private Map<String, Destination> loggedOn; // hashmap of online users and
 												// their Destinations
+	
 
 	public Server() {
 		accounts = new Accounts();
@@ -79,9 +82,8 @@ public class Server implements MessageListener {
 			// this.session.createTopic(ServerConstants.messageTopicName);
 
 			// Server consumes from adminqueue
-			Destination adminQueue = this.session
-					.createQueue(ServerConstants.produceTopicName);
-
+			adminQueue = this.session.createQueue(ServerConstants.produceTopicName);
+            broadcastTopic = this.session.createTopic(ServerConstants.publicBroadcast);
 			// Create the server-to-client topic
 			// Destination produceTopic =
 			// this.session.createTopic(ServerConstants.produceTopicName);
@@ -148,7 +150,8 @@ public class Server implements MessageListener {
 
 	private void handleMessage(Message tmp) throws JMSException {
         TextMessage tm = (TextMessage) tmp;
-		String text = tm.getText();
+        String text = tm.getText();
+        TextMessage reply = session.createTextMessage();
 
 		switch (text.charAt(1)) {
 		case 'a':
@@ -159,6 +162,11 @@ public class Server implements MessageListener {
 			break;
 		case 'c': 
 			setChat(tmp);
+			break;
+		case 'b':
+			reply.setText("setbroadcast");
+			reply.setJMSDestination(broadcastTopic);
+			this.replyProducer.send(tmp.getJMSReplyTo(), reply);
 			break;
 		default:
 			break;
@@ -239,8 +247,7 @@ public class Server implements MessageListener {
 				System.out.println(responseText);
 				
 				response.setText(responseText);
-				MessageProducer tempProducer = this.session
-						.createProducer(message.getJMSReplyTo());
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 				tempProducer.send(message.getJMSReplyTo(), response);
 				tempProducer.close();
 				return;
@@ -254,8 +261,7 @@ public class Server implements MessageListener {
 				System.out.println("RECEIVED createchatroom COMMAND");
 				String[] command = ((TextMessage)message).getText().split(" ");
 				
-				MessageProducer tempProducer = this.session
-						.createProducer(message.getJMSReplyTo());
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 				
 				if(serverrunchatroom.roomExists(command[1])){
 					TextMessage response = this.session.createTextMessage();
@@ -362,7 +368,7 @@ public class Server implements MessageListener {
 				// JMSReplyTo field of the received message,
 				// this is presumably a temporary queue created by the client
 				try{
-					this.replyProducer.send(message.getJMSReplyTo(), response);
+				     this.replyProducer.send(message.getJMSReplyTo(), response);
 				}catch(UnsupportedOperationException e){
 					return;
 				}
