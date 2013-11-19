@@ -105,6 +105,9 @@ public class Server implements MessageListener {
 	}
 
 	private void addUserOnline(TextMessage tm) throws JMSException {
+		if(tm.getText() == null || tm.getJMSMessageID() == null){
+			return;
+		}
 		String clientID = tm.getJMSMessageID();
 		String user = tm.getText();
 		String[] temp = user.split(" ");
@@ -115,11 +118,15 @@ public class Server implements MessageListener {
 	}
 
 	private void reportOnlineUsers(Destination dest) throws JMSException {
-
-		String users = "";
+		if(onlineUsers.isEmpty()){
+			TextMessage tm = this.session.createTextMessage();
+			tm.setText("No users found");
+			this.replyProducer.send(dest, tm);
+		}
+		String users = "\nOnline Users: \n";
 
 		for (String s : onlineUsers.keySet()) {
-			users += s + "\n";
+			users += "    " + s + "\n";
 		}
 
 		System.out.println(users);
@@ -147,6 +154,8 @@ public class Server implements MessageListener {
 		case 'c': 
 			setChat(tmp);
 			break;
+		default:
+			break;
 		}
 
 	}
@@ -172,7 +181,7 @@ public class Server implements MessageListener {
 		// Username, password verification
 		try {
 			// System.out.println(message.getJMSCorrelationID());
-
+			
 			if (message.getJMSCorrelationID() != null
 					&& (message.getJMSCorrelationID().equals("createAccount")
 							|| message.getJMSCorrelationID().equals(
@@ -183,6 +192,7 @@ public class Server implements MessageListener {
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String[] account = ((TextMessage) message).getText().split(" ");
 				System.out.println("Reading account info: " + ((TextMessage) message).getText());
+				
 				if(((TextMessage) message).getText().equals("edited")){
 					return;
 				}
@@ -190,10 +200,12 @@ public class Server implements MessageListener {
 				String password = null;
 				password = account[1];
 				String newPassword = null;
+				
 				if (message.getJMSCorrelationID().equals("editAccount")) {
 					newPassword = account[2];
 				}
 				String responseText;
+				
 				if (message.getJMSCorrelationID().equals("createAccount")) {
 					responseText = create(username, password);
 				} else if (message.getJMSCorrelationID()
@@ -223,19 +235,25 @@ public class Server implements MessageListener {
 				tempProducer.close();
 				return;
 			}
+			
+			//delete user from list on logoff 
+			//Really need to split these cases
+			if (message.getJMSCorrelationID() != null
+					&& message.getJMSCorrelationID().equals("LOGOFF")) {
+				String[] msg = tm.getText().split(" ");
+				onlineUsers.remove(msg[0]);
+				return;
+			}
+			
+			//Add user to list when logging on
 			/*
-			 * if (message.getJMSCorrelationID() != null &&
-			 * message.getJMSCorrelationID().equals("verifyAccount")) {
-			 * TextMessage response = this.session.createTextMessage();
-			 * response.setJMSCorrelationID(message.getJMSCorrelationID());
-			 * String[] account = ((TextMessage)message).getText().split(" ");
-			 * String username = account[0]; String password = account[1];
-			 * 
-			 * response.setText(responseText); MessageProducer tempProducer =
-			 * this.session.createProducer(message.getJMSReplyTo());
-			 * tempProducer.send(message.getJMSReplyTo(), response);
-			 * tempProducer.close(); return; }
-			 */
+			if (message.getJMSCorrelationID() != null
+					&& message.getJMSCorrelationID().equals("LOGON")) {
+				String msg = tm.getText();
+				addUserOnline(tm);
+				return;
+			}*/
+			
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
@@ -296,7 +314,11 @@ public class Server implements MessageListener {
 				// Send the response to the Destination specified by the
 				// JMSReplyTo field of the received message,
 				// this is presumably a temporary queue created by the client
-				this.replyProducer.send(message.getJMSReplyTo(), response);
+				try{
+					this.replyProducer.send(message.getJMSReplyTo(), response);
+				}catch(UnsupportedOperationException e){
+					return;
+				}
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();

@@ -51,7 +51,7 @@ public class Client extends AbstractClient {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText(username + " has logged off");
 
-					txtMessage.setJMSCorrelationID(username);
+					txtMessage.setJMSCorrelationID("LOGOFF");
 
 					this.producer.send(txtMessage);
 					System.exit(0);
