@@ -98,7 +98,13 @@ public class Server implements MessageListener {
 			// queue
 			MessageConsumer consumer = this.session.createConsumer(adminQueue);
 			consumer.setMessageListener(this);
-
+			
+			
+			Destination adminQueue_2 = this.session//
+					.createQueue("templistchatroomqueue");//
+			MessageConsumer consumer_2 = this.session.createConsumer(adminQueue_2);//
+			consumer_2.setMessageListener(this);	//
+			
 		} catch (JMSException e) {
 			// Handle the exception appropriately
 		}
@@ -212,10 +218,14 @@ public class Server implements MessageListener {
 
 			// added by JW
 			if (message.getJMSCorrelationID() != null
-					&& message.getJMSCorrelationID().equals("listChatRoom")) {
+					&& message.getJMSCorrelationID().equalsIgnoreCase("listChatRoom")) {
+				System.out.println("RECEIVED LISTCHATROOM COMMAND");
 				TextMessage response = this.session.createTextMessage();
 				response.setJMSCorrelationID(message.getJMSCorrelationID());
 				String responseText = serverrunchatroom.transmitChatRoomList();
+				
+				System.out.println(responseText);
+				
 				response.setText(responseText);
 				MessageProducer tempProducer = this.session
 						.createProducer(message.getJMSReplyTo());
@@ -223,6 +233,41 @@ public class Server implements MessageListener {
 				tempProducer.close();
 				return;
 			}
+			
+			
+			//createchatroom
+			if (message.getJMSCorrelationID() != null
+					&& message.getJMSCorrelationID().equalsIgnoreCase("createChatRoom")) {
+				System.out.println("RECEIVED createchatroom COMMAND");
+				String[] command = ((TextMessage)message).getText().split(" ");
+				
+				MessageProducer tempProducer = this.session
+						.createProducer(message.getJMSReplyTo());
+				
+				if(serverrunchatroom.roomExists(command[1])){
+					TextMessage response = this.session.createTextMessage();
+					response.setJMSCorrelationID(message.getJMSCorrelationID());
+					response.setText("Room already exists. Failure;");
+					tempProducer.send(message.getJMSReplyTo(), response);
+					tempProducer.close();
+					return;
+				}
+				serverrunchatroom.createChatRoom(command[1]);
+				
+				
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+
+				
+				response.setText("creation complete");
+				tempProducer.send(message.getJMSReplyTo(), response);
+				String responseText = serverrunchatroom.transmitChatRoomList();
+				response.setText(responseText);
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			}
+			
 			/*
 			 * if (message.getJMSCorrelationID() != null &&
 			 * message.getJMSCorrelationID().equals("verifyAccount")) {

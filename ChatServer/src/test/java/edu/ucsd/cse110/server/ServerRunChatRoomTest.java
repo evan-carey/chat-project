@@ -118,6 +118,8 @@ public class ServerRunChatRoomTest {
 			String allRooms = customRoom.transmitChatRoomList();
 			String expectedRooms = "UCSD CHATROOM_1 CHATROOM Lobby CSE110 ";
 
+			System.out.println(allRooms);
+			
 			// Need to check the order of the list
 			assertEquals(allRooms, expectedRooms);
 

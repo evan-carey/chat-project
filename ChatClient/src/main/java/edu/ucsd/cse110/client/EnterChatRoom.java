@@ -48,7 +48,7 @@ public class EnterChatRoom implements MessageListener {
 			connection = connectionFactory.createConnection();
 			connection.start();
 			session = connection.createSession(transacted, ClientConstants.ackMode);
-			Destination adminQueue = session.createTopic(ClientConstants.clientTopicName);
+			Destination adminQueue = session.createQueue(ClientConstants.consumeTopicName);
 			this.producer = session.createProducer(adminQueue);
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
@@ -59,7 +59,7 @@ public class EnterChatRoom implements MessageListener {
 			System.out.println("You are attemping to enter a chatroom....");
 			System.out.println("Current chatrooms are:");
 			System.out.println("Please enter the name of the chatroom you want to join in");
-			listChatRoom();
+			commandChatRoom("listchatroom");
 			selectChatRoom();
 			//responseConsumer.close(); //unsubscribe from the temporary topic used to transmit chatroomlist
 			inChatRoom();
@@ -94,15 +94,17 @@ public class EnterChatRoom implements MessageListener {
 		
 	}
 	
-	public void listChatRoom() throws JMSException{
+	public void commandChatRoom(String command) throws JMSException{
 		TextMessage txtMessage = session.createTextMessage();
-		txtMessage.setText("listchatroom");
+		txtMessage.setText(command);
 		txtMessage.setJMSReplyTo(consumerQueue);
-		String correlationId = "listChatRoom";
+		String correlationId = command;
 		txtMessage.setJMSCorrelationID(correlationId);
 		this.producer.send(txtMessage);
 	
     }
+	
+
 	
 	public void selectChatRoom() throws JMSException{
 		// Do you want to create one? Implement later and also:created chatroom never deleted
@@ -115,7 +117,6 @@ public class EnterChatRoom implements MessageListener {
 		// Now create the actual message you want to send
 		Scanner keyboard = new Scanner(System.in);
 		chatroomname = keyboard.nextLine();
-		
 		for (String chatroomentry:ChatRoomStringList){
 			chatroomname.equalsIgnoreCase(chatroomentry);
 			chatroomflag=true;
@@ -152,8 +153,8 @@ public class EnterChatRoom implements MessageListener {
 				if ("Command:LISTCHATROOM".equalsIgnoreCase(message)) {
 					
 					System.out.println("The current chatroom list");
-					listChatRoom();
-					break;
+					commandChatRoom("listchatroom");
+					continue;
 					/*TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("quitchatroom");
 					
@@ -165,6 +166,20 @@ public class EnterChatRoom implements MessageListener {
 					System.out.println("Client quits current chatroom");
 					connection.close();
 */
+				}
+				
+				if ("Command:CREATECHATROOM".equalsIgnoreCase(message)) {
+					System.out.println("please enter the name of the chatroom you want to create");
+					System.out.print(">>");
+					String chatroomname = keyboard.nextLine();
+					String createchatroom="createchatroom"+" "+chatroomname;
+					String correlationId = "createchatroom";
+					TextMessage txtMessage = session.createTextMessage();
+					txtMessage.setJMSReplyTo(consumerQueue);
+					txtMessage.setJMSCorrelationID(correlationId);
+					txtMessage.setText(createchatroom);
+					this.producer.send(txtMessage);
+					continue;
 				}
 				
 				if ("Command:quitchatroom".equalsIgnoreCase(message)) {
