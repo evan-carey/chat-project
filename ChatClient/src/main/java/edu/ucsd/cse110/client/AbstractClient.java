@@ -158,8 +158,6 @@ public abstract class AbstractClient implements MessageListener {
 					} catch (JMSException e) {
 						e.printStackTrace();
 					}
-					System.out.println(" Done!");
-
 				}
 			});
 		}

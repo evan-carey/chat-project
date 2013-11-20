@@ -91,7 +91,7 @@ public class Client extends AbstractClient {
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();
-		}
+		} 
 	}
 
 	private void getInfo() {

@@ -110,7 +110,7 @@ public class Server implements MessageListener {
 			consumer_2.setMessageListener(this);	//
 			
 		} catch (JMSException e) {
-			// Handle the exception appropriately
+			e.printStackTrace();
 		}
 	}
 
