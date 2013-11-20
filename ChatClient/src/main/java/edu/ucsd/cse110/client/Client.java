@@ -66,6 +66,9 @@ public class Client extends AbstractClient {
 				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
 					new EnterChatRoom(username);
 				
+				}   else if ("cancel broadcast".equalsIgnoreCase(message)) {
+					setProducer(producerQueue);
+				
 				} else if (message.equals("disconnect")) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("disconnect");
@@ -161,8 +164,7 @@ public class Client extends AbstractClient {
 				else if (messageText.equals("disconnect"))
 					setProducer(producerQueue);
 				else if (messageText.equals("setbroadcast")){
-					setProducer(message.getJMSReplyTo());
-					setConsumer(producerTopic);
+					setTopicProducer("publicBroadcast");
 				}
 			}
 		} catch (JMSException e) {

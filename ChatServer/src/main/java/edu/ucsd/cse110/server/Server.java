@@ -82,6 +82,7 @@ public class Server implements MessageListener {
 			Destination adminQueue = this.session
 					.createQueue(ServerConstants.produceTopicName);
 
+			Destination broadcast=this.session.createTopic("publicBroadcast");
 			// Create the server-to-client topic
 			// Destination produceTopic =
 			// this.session.createTopic(ServerConstants.produceTopicName);
@@ -98,6 +99,9 @@ public class Server implements MessageListener {
 			// queue
 			MessageConsumer consumer = this.session.createConsumer(adminQueue);
 			consumer.setMessageListener(this);
+			
+			
+			
 			
 			
 			Destination adminQueue_2 = this.session//
@@ -160,12 +164,38 @@ public class Server implements MessageListener {
 		case 'c': 
 			setChat(tmp);
 			break;
+		case 'b':
+			setBroadcast(tmp.getJMSReplyTo());
+			break;
 		default:
 			break;
 		}
 
 	}
 	
+	private void setBroadcast(Destination dest) {
+		TextMessage tm = null;
+		try {
+			tm = this.session.createTextMessage();
+		} catch (JMSException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		try {
+			tm.setText("setbroadcast");
+		} catch (JMSException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		try {
+			this.replyProducer.send(dest, tm);
+		} catch (JMSException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
 	private boolean scanID(Message message){
 		String msgID;
 		try {

@@ -36,6 +36,7 @@ public abstract class AbstractClient implements MessageListener {
 			this.session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 			setProducer("");
 			setConsumer("");
+			setTopicConsumer("publicBroadcast");
 		} catch(JMSException e) {
 			e.printStackTrace();
 		}
@@ -53,6 +54,21 @@ public abstract class AbstractClient implements MessageListener {
 		this.producer = session.createProducer(producerQueue);
 		this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 	}
+	
+	public void setTopicProducer(String queue) throws JMSException {
+//		String queueName = queue == null || queue.equals("") ? ClientConstants.consumeTopicName : queue;
+//		this.producerQueue = session.createQueue(queueName);
+		Destination producer_Topic = session.createTopic(queue); //for the time being the producerTopic by default to server.broadcast
+		this.producer = session.createProducer(producer_Topic);
+		this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+	}
+	
+	public void setTopicConsumer(String queue) throws JMSException {
+		Destination consumerTopic = session.createTopic(queue);
+		MessageConsumer consumer_Topic = session.createConsumer(consumerTopic);
+		consumer_Topic.setMessageListener(this);
+	}
+	
 	public void setProducer(Destination dest) throws JMSException {
 		if (dest instanceof Queue) {
 			Destination queue = (Queue) dest;
@@ -65,6 +81,7 @@ public abstract class AbstractClient implements MessageListener {
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 		}
 	}
+	
 	
 	/**
 	 * Set the consumer to a given queue, or a random queue as a default.
