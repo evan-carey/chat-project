@@ -37,6 +37,7 @@ public class EnterChatRoom implements MessageListener {
 	private String[] ChatRoomStringList;
 	private Destination producerQueue;
 	private Destination consumerQueue;
+	private String currentChatRoom;
 
 	public EnterChatRoom(String username) throws JMSException{
 		this.username=username;
@@ -95,12 +96,7 @@ public class EnterChatRoom implements MessageListener {
 	}
 	
 	public void commandChatRoom(String command) throws JMSException{
-		TextMessage txtMessage = session.createTextMessage();
-		txtMessage.setText(command);
-		txtMessage.setJMSReplyTo(consumerQueue);
-		String correlationId = command;
-		txtMessage.setJMSCorrelationID(correlationId);
-		this.producer.send(txtMessage);
+		txtSender(command,command);
 	
     }
 	
@@ -118,14 +114,18 @@ public class EnterChatRoom implements MessageListener {
 		Scanner keyboard = new Scanner(System.in);
 		chatroomname = keyboard.nextLine();
 		for (String chatroomentry:ChatRoomStringList){
-			chatroomname.equalsIgnoreCase(chatroomentry);
-			chatroomflag=true;
+			if (chatroomname.equals(chatroomentry)) chatroomflag=true;;
+			
 		}
 		
 		if(!chatroomflag){
-			System.out.print("chatroom not in the list, please reselect");			
+			System.out.println("chatroom name is case sensitive, your chatroom name is not in the list, please reselect");			
 		}	
 		}
+		
+		//send chatroom login message:
+		currentChatRoom=chatroomname;
+		txtSender(username+" "+currentChatRoom,"chatroomlogin");
 		
 		Destination consumeTopic_chatroom = session.createTopic(chatroomname);
 		this.producer_chatroom = session.createProducer(consumeTopic_chatroom);
@@ -155,30 +155,20 @@ public class EnterChatRoom implements MessageListener {
 					System.out.println("The current chatroom list");
 					commandChatRoom("listchatroom");
 					continue;
-					/*TextMessage txtMessage = session.createTextMessage();
-					txtMessage.setText("quitchatroom");
+				}
+				
+				if ("Command:LISTCHATROOMUSERS".equalsIgnoreCase(message)) {
 					
-					// txtMessage.setJMSReplyTo(tempDest);
-					//String correlationId = this.createRandomString();
-
-					// txtMessage.setJMSCorrelationID(correlationId);
-					this.producer.send(txtMessage);
-					System.out.println("Client quits current chatroom");
-					connection.close();
-*/
+					System.out.println("The current chatroom userlist is:");
+					txtSender(username+" "+currentChatRoom,"listchatroomusers");
+					continue;
 				}
 				
 				if ("Command:CREATECHATROOM".equalsIgnoreCase(message)) {
 					System.out.println("please enter the name of the chatroom you want to create");
 					System.out.print(">>");
 					String chatroomname = keyboard.nextLine();
-					String createchatroom="createchatroom"+" "+chatroomname;
-					String correlationId = "createchatroom";
-					TextMessage txtMessage = session.createTextMessage();
-					txtMessage.setJMSReplyTo(consumerQueue);
-					txtMessage.setJMSCorrelationID(correlationId);
-					txtMessage.setText(createchatroom);
-					this.producer.send(txtMessage);
+					txtSender("createchatroom"+" "+chatroomname,"createchatroom");
 					continue;
 				}
 				
@@ -186,19 +176,9 @@ public class EnterChatRoom implements MessageListener {
 					
 					System.out.println("Client quits current chatroom,return to default"
 							+ " interface");
+					txtSender(username+" "+currentChatRoom,"chatroomlogout");
 					connection.close();
 					return;
-					/*TextMessage txtMessage = session.createTextMessage();
-					txtMessage.setText("quitchatroom");
-					
-					// txtMessage.setJMSReplyTo(tempDest);
-					//String correlationId = this.createRandomString();
-
-					// txtMessage.setJMSCorrelationID(correlationId);
-					this.producer.send(txtMessage);
-					System.out.println("Client quits current chatroom");
-					connection.close();
-*/
 				}
 				
 				message="["+username+"]"+":"+message;
@@ -216,6 +196,15 @@ public class EnterChatRoom implements MessageListener {
 	
 
 
+	}
+	
+	public void txtSender(String content, String correlationid) throws JMSException{
+		TextMessage txtMessage = session.createTextMessage();
+		txtMessage.setText(content);
+		txtMessage.setJMSReplyTo(consumerQueue);
+		String correlationId = correlationid;
+		txtMessage.setJMSCorrelationID(correlationId);
+		this.producer.send(txtMessage);
 	}
 	
 	public static void main(String[] args) throws JMSException{

@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.server;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ public class ServerRunChatRoom {
 	private static Set<Destination> CHATROOMLIST;
 	private static Set<String> CHATROOMSTINGLIST;
 	private int numberOfRooms = 2;
+	private HashMap<String,Set<String>> CHATROOMUSERLIST;
 	
 	public ServerRunChatRoom() throws JMSException{ //Setup Default chatroom and get an initilized chatroom list
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(ServerConstants.messageBrokerUrl);
@@ -57,6 +59,10 @@ public class ServerRunChatRoom {
 		CHATROOMSTINGLIST.add(DEFAULTROOM);
 		CHATROOMLIST.add(defaultroom_1);
 		CHATROOMSTINGLIST.add(DEFAULTROOM_1);
+		
+		CHATROOMUSERLIST=new HashMap<String,Set<String>>();
+		CHATROOMUSERLIST.put(DEFAULTROOM, new HashSet());
+		CHATROOMUSERLIST.put(DEFAULTROOM_1, new HashSet());
 	}
 	
 	
@@ -64,6 +70,7 @@ public class ServerRunChatRoom {
         Destination addroom = this.session.createTopic(chatroomname);
         CHATROOMLIST.add(addroom);
         CHATROOMSTINGLIST.add(chatroomname);
+		CHATROOMUSERLIST.put(chatroomname, new HashSet());
 	}
 	
 	
@@ -143,6 +150,24 @@ public class ServerRunChatRoom {
 		}
 		return false;
 	}
-}
+	
+	
+	public void addUser(String username, String chatroomname){
+		CHATROOMUSERLIST.get(chatroomname).add(username);
+	}
+	
+	public void removeUser(String username, String chatroomname){
+		CHATROOMUSERLIST.get(chatroomname).remove(username);
+	}
+	
+	public String transmitChatRoomUserList(String chatroomname){
+    	String messageText="";
+    	String[] chatroomuserlist=CHATROOMUSERLIST.get(chatroomname).toArray(new String[0]);
+		for (String i:chatroomuserlist)
+		    messageText = messageText+i+" ";
 
+		return messageText;
+	}
+	
+}
 

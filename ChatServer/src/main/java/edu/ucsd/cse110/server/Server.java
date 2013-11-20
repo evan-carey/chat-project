@@ -29,15 +29,12 @@ public class Server implements MessageListener {
 	private MessageProducer replyProducer;
 	private MessageProtocol messageProtocol;
 	private ServerRunChatRoom serverrunchatroom;// added by JW
-	private Destination broadcastTopic;
-	private Destination adminQueue;
 	/** User accounts */
 	private Accounts accounts;
 	private HashMap<String, String> onlineUsers;
 
 	private Map<String, Destination> loggedOn; // hashmap of online users and
 												// their Destinations
-	
 
 	public Server() {
 		accounts = new Accounts();
@@ -82,8 +79,9 @@ public class Server implements MessageListener {
 			// this.session.createTopic(ServerConstants.messageTopicName);
 
 			// Server consumes from adminqueue
-			adminQueue = this.session.createQueue(ServerConstants.produceTopicName);
-            broadcastTopic = this.session.createTopic(ServerConstants.publicBroadcast);
+			Destination adminQueue = this.session
+					.createQueue(ServerConstants.produceTopicName);
+
 			// Create the server-to-client topic
 			// Destination produceTopic =
 			// this.session.createTopic(ServerConstants.produceTopicName);
@@ -150,8 +148,7 @@ public class Server implements MessageListener {
 
 	private void handleMessage(Message tmp) throws JMSException {
         TextMessage tm = (TextMessage) tmp;
-        String text = tm.getText();
-        TextMessage reply = session.createTextMessage();
+		String text = tm.getText();
 
 		switch (text.charAt(1)) {
 		case 'a':
@@ -163,15 +160,269 @@ public class Server implements MessageListener {
 		case 'c': 
 			setChat(tmp);
 			break;
-		case 'b':
-			reply.setText("setbroadcast");
-			reply.setJMSDestination(broadcastTopic);
-			this.replyProducer.send(tmp.getJMSReplyTo(), reply);
-			break;
 		default:
 			break;
 		}
 
+	}
+	
+	private boolean scanID(Message message){
+		String msgID;
+		try {
+			msgID = message.getJMSCorrelationID().toLowerCase();
+		} catch (JMSException e) {
+			return false;
+		}
+		switch(msgID){
+		case "createaccount":
+			//System.out.println("CreateAccount!");
+			accountCreation(message);
+			return true;
+		case "verifyaccount":
+			//System.out.println("verifyAccount!");
+			accountVerification(message);
+			return true;
+		case "editaccount":
+			//System.out.println("editAccount!");
+			accountEdit(message);
+			return true;
+		case "listchatroom":
+			//System.out.println("listChatRoom!");
+			listChatRoom(message);
+			return true;
+		case "logoff":
+			//System.out.println("LOGOFF!");
+			removeUser(message);
+			return true;
+		case "createchatroom":
+			//System.out.println("createChatRoom!");
+			createChatRoom(message);
+			return true;
+		case "listchatroomusers":
+			//System.out.println("listchatroomusers");
+			listChatRoomUsers(message);
+			return true;
+		case "chatroomlogin":
+			//System.out.println("chatroomlogin");
+			chatRoomLogIn(message);
+			return true;
+		case "chatroomlogout":
+			//System.out.println("chatroomlogout");
+			chatRoomLogOut(message);
+			return true;
+		default:
+			return false;
+		}
+	}
+	
+	
+	private void listChatRoomUsers(Message message){
+		TextMessage tm = (TextMessage) message;
+			String[] args = null;
+			try {
+				args = tm.getText().split(" ");
+			} catch (JMSException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			String username=args[0];
+			String chatroomname=args[1];
+		
+		try {
+			TextMessage response = this.session.createTextMessage();
+			response.setJMSCorrelationID(message.getJMSCorrelationID());
+			String responseText = serverrunchatroom.transmitChatRoomUserList(chatroomname);
+
+			System.out.println(responseText);
+
+			response.setText(responseText);
+			MessageProducer tempProducer = this.session
+					.createProducer(message.getJMSReplyTo());
+			tempProducer.send(message.getJMSReplyTo(), response);
+			tempProducer.close();
+		} catch (JMSException e) {
+		}
+	}
+	
+	private void chatRoomLogIn(Message message){
+		TextMessage tm = (TextMessage) message;
+		String[] args = null;
+		try {
+			args = tm.getText().split(" ");
+		} catch (JMSException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		String username=args[0];
+		String chatroomname=args[1];
+		serverrunchatroom.addUser(username, chatroomname);
+
+	}
+	
+	private void chatRoomLogOut(Message message){
+		TextMessage tm = (TextMessage) message;
+		String[] args = null;
+		try {
+			args = tm.getText().split(" ");
+		} catch (JMSException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		String username=args[0];
+		String chatroomname=args[1];
+		serverrunchatroom.removeUser(username, chatroomname);
+	}
+	
+	private void createChatRoom(Message message){
+		System.out.println("RECEIVED createchatroom COMMAND");
+		try{
+			String[] command = ((TextMessage)message).getText().split(" ");
+			
+			MessageProducer tempProducer = this.session
+					.createProducer(message.getJMSReplyTo());
+			
+			if(serverrunchatroom.roomExists(command[1])){
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				response.setText("Room already exists. Failure;");
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			}
+			serverrunchatroom.createChatRoom(command[1]);
+			
+			
+			TextMessage response = this.session.createTextMessage();
+			response.setJMSCorrelationID(message.getJMSCorrelationID());
+	
+			
+			response.setText("creation complete");
+			tempProducer.send(message.getJMSReplyTo(), response);
+			String responseText = serverrunchatroom.transmitChatRoomList();
+			response.setText(responseText);
+			tempProducer.send(message.getJMSReplyTo(), response);
+			tempProducer.close();
+		}catch(JMSException e){
+			
+		}
+	}
+	
+	private void listChatRoom(Message message){
+		TextMessage tm = (TextMessage) message;
+		try {
+			TextMessage response = this.session.createTextMessage();
+			response.setJMSCorrelationID(message.getJMSCorrelationID());
+			String responseText = serverrunchatroom.transmitChatRoomList();
+
+			System.out.println(responseText);
+
+			response.setText(responseText);
+			MessageProducer tempProducer = this.session
+					.createProducer(message.getJMSReplyTo());
+			tempProducer.send(message.getJMSReplyTo(), response);
+			tempProducer.close();
+		} catch (JMSException e) {
+		}
+	}
+	
+	private void removeUser(Message message){
+		TextMessage tm = (TextMessage) message;
+		String[] msg = null;
+		try {
+			msg = tm.getText().split(" ");
+		} catch (JMSException e) {
+			e.printStackTrace();
+		}
+		onlineUsers.remove(msg[0]);
+		return;
+	}
+	
+	private void accountVerification(Message message){
+		TextMessage response;
+		
+			try {
+				response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				String[] account = ((TextMessage) message).getText().split(" ");
+				System.out.println("Reading account info: " + ((TextMessage) message).getText());
+				
+				String username = account[0];
+				String password = null;
+				password = account[1];
+				String newPassword = null;
+				String responseText;
+				
+				responseText = validate(username, password);
+				
+				response.setText(responseText);
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			} catch (JMSException e) {
+				e.printStackTrace();
+			}
+			
+	}
+	private void accountEdit(Message message){
+		TextMessage response;
+		
+		try {
+			response = this.session.createTextMessage();
+			response.setJMSCorrelationID(message.getJMSCorrelationID());
+			String[] account = ((TextMessage) message).getText().split(" ");
+			System.out.println("Reading account info: " + ((TextMessage) message).getText());
+			
+			String username = account[0];
+			String password = null;
+			password = account[1];
+			String newPassword = null;
+			newPassword = account[2];
+			String responseText;
+			
+			responseText = edit(username, password, newPassword);
+			if(((TextMessage) message).getText().equals("edited")){
+				message.setJMSCorrelationID(null);
+			}
+			
+			response.setText(responseText);
+			MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+			tempProducer.send(message.getJMSReplyTo(), response);
+			tempProducer.close();
+		return;
+		} catch (JMSException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	private void accountCreation(Message message){
+		
+		TextMessage response;
+		try {
+			response = this.session.createTextMessage();
+			response.setJMSCorrelationID(message.getJMSCorrelationID());
+			String[] account = ((TextMessage) message).getText().split(" ");
+			System.out.println("Reading account info: " + ((TextMessage) message).getText());
+			
+			String username = account[0];
+			String password = null;
+			password = account[1];
+			String newPassword = null;
+		
+			String responseText;
+			
+			responseText = create(username, password);
+			
+			response.setText(responseText);
+			MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+			tempProducer.send(message.getJMSReplyTo(), response);
+			tempProducer.close();
+			return;
+			
+		} catch (JMSException e) {
+			e.printStackTrace();
+		}
+		
 	}
 
 	public void onMessage(Message message) {
@@ -179,6 +430,8 @@ public class Server implements MessageListener {
 		TextMessage tm = (TextMessage) message;
 		String text = "";
 		Destination userDest;
+		//Note: Planning to change the way list online users
+		// 		is processed. Incorporate into ScanID.
 		boolean chatflag = false;
 		try {
 			text = tm.getText();
@@ -192,124 +445,10 @@ public class Server implements MessageListener {
 			e1.printStackTrace();
 		}
 
-		// Username, password verification
-		try {
-			// System.out.println(message.getJMSCorrelationID());
-			
-			if (message.getJMSCorrelationID() != null
-					&& (message.getJMSCorrelationID().equals("createAccount")
-							|| message.getJMSCorrelationID().equals(
-									"verifyAccount") || message
-							.getJMSCorrelationID().equals("editAccount"))) {
+		//Check for special message cases
+		if(scanID(message) == true)
+			return;
 
-				TextMessage response = this.session.createTextMessage();
-				response.setJMSCorrelationID(message.getJMSCorrelationID());
-				String[] account = ((TextMessage) message).getText().split(" ");
-				System.out.println("Reading account info: " + ((TextMessage) message).getText());
-				
-				if(((TextMessage) message).getText().equals("edited")){
-					return;
-				}
-				String username = account[0];
-				String password = null;
-				password = account[1];
-				String newPassword = null;
-				
-				if (message.getJMSCorrelationID().equals("editAccount")) {
-					newPassword = account[2];
-				}
-				String responseText;
-				
-				if (message.getJMSCorrelationID().equals("createAccount")) {
-					responseText = create(username, password);
-				} else if (message.getJMSCorrelationID()
-						.equals("verifyAccount")) {
-					responseText = validate(username, password);
-				} else {
-					responseText = edit(username, password, newPassword);
-					message.setJMSCorrelationID(null);//server will respond with regular message after verification
-				}
-				response.setText(responseText);
-				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
-				tempProducer.send(message.getJMSReplyTo(), response);
-				tempProducer.close();
-				return;
-			}
-
-			// added by JW
-			if (message.getJMSCorrelationID() != null
-					&& message.getJMSCorrelationID().equalsIgnoreCase("listChatRoom")) {
-				System.out.println("RECEIVED LISTCHATROOM COMMAND");
-				TextMessage response = this.session.createTextMessage();
-				response.setJMSCorrelationID(message.getJMSCorrelationID());
-				String responseText = serverrunchatroom.transmitChatRoomList();
-				
-				System.out.println(responseText);
-				
-				response.setText(responseText);
-				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
-				tempProducer.send(message.getJMSReplyTo(), response);
-				tempProducer.close();
-				return;
-			}
-			
-
-			
-			//createchatroom
-			if (message.getJMSCorrelationID() != null
-					&& message.getJMSCorrelationID().equalsIgnoreCase("createChatRoom")) {
-				System.out.println("RECEIVED createchatroom COMMAND");
-				String[] command = ((TextMessage)message).getText().split(" ");
-				
-				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
-				
-				if(serverrunchatroom.roomExists(command[1])){
-					TextMessage response = this.session.createTextMessage();
-					response.setJMSCorrelationID(message.getJMSCorrelationID());
-					response.setText("Room already exists. Failure;");
-					tempProducer.send(message.getJMSReplyTo(), response);
-					tempProducer.close();
-					return;
-				}
-				serverrunchatroom.createChatRoom(command[1]);
-				
-				
-				TextMessage response = this.session.createTextMessage();
-				response.setJMSCorrelationID(message.getJMSCorrelationID());
-
-				
-				response.setText("creation complete");
-				tempProducer.send(message.getJMSReplyTo(), response);
-				String responseText = serverrunchatroom.transmitChatRoomList();
-				response.setText(responseText);
-				tempProducer.send(message.getJMSReplyTo(), response);
-				tempProducer.close();
-				return;
-			}
-			
-
-			//delete user from list on logoff 
-			//Really need to split these cases
-			if (message.getJMSCorrelationID() != null
-					&& message.getJMSCorrelationID().equals("LOGOFF")) {
-				String[] msg = tm.getText().split(" ");
-				onlineUsers.remove(msg[0]);
-				return;
-			}
-			
-			//Add user to list when logging on
-
-			/*
-			if (message.getJMSCorrelationID() != null
-					&& message.getJMSCorrelationID().equals("LOGON")) {
-				String msg = tm.getText();
-				addUserOnline(tm);
-				return;
-			}*/
-			
-		} catch (JMSException e) {
-			e.printStackTrace();
-		}
 
 		// Regular message handling
 		System.out.println("Message received by server");
@@ -368,7 +507,7 @@ public class Server implements MessageListener {
 				// JMSReplyTo field of the received message,
 				// this is presumably a temporary queue created by the client
 				try{
-				     this.replyProducer.send(message.getJMSReplyTo(), response);
+					this.replyProducer.send(message.getJMSReplyTo(), response);
 				}catch(UnsupportedOperationException e){
 					return;
 				}
@@ -396,6 +535,7 @@ public class Server implements MessageListener {
 
 	public String create(String username, String password) {
 		try {
+			System.out.println("Adding " + username + " " + password);
 			accounts.addAccount(username, password);
 			return "created";
 		} catch (AccountException e) {
