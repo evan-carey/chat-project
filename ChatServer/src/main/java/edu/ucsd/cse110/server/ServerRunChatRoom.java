@@ -1,21 +1,14 @@
 package edu.ucsd.cse110.server;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import javax.jms.Connection;
-import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
-import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -53,16 +46,16 @@ public class ServerRunChatRoom {
         
         Destination defaultroom = this.session.createTopic(DEFAULTROOM);
         Destination defaultroom_1 = this.session.createTopic(DEFAULTROOM_1);
-		CHATROOMLIST=new HashSet();
-		CHATROOMSTINGLIST=new HashSet();
+		CHATROOMLIST=new HashSet<Destination>();
+		CHATROOMSTINGLIST=new HashSet<String>();
 		CHATROOMLIST.add(defaultroom);
 		CHATROOMSTINGLIST.add(DEFAULTROOM);
 		CHATROOMLIST.add(defaultroom_1);
 		CHATROOMSTINGLIST.add(DEFAULTROOM_1);
 		
 		CHATROOMUSERLIST=new HashMap<String,Set<String>>();
-		CHATROOMUSERLIST.put(DEFAULTROOM, new HashSet());
-		CHATROOMUSERLIST.put(DEFAULTROOM_1, new HashSet());
+		CHATROOMUSERLIST.put(DEFAULTROOM, new HashSet<String>());
+		CHATROOMUSERLIST.put(DEFAULTROOM_1, new HashSet<String>());
 	}
 	
 	
@@ -70,7 +63,7 @@ public class ServerRunChatRoom {
         Destination addroom = this.session.createTopic(chatroomname);
         CHATROOMLIST.add(addroom);
         CHATROOMSTINGLIST.add(chatroomname);
-		CHATROOMUSERLIST.put(chatroomname, new HashSet());
+		CHATROOMUSERLIST.put(chatroomname, new HashSet<String>());
 	}
 	
 	

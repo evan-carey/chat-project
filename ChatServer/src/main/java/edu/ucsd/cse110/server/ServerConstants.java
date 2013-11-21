@@ -23,10 +23,4 @@ public abstract class ServerConstants {
         publicBroadcast = "server.broadcast";
         ackMode = Session.AUTO_ACKNOWLEDGE;
     }
-    
-    
-	
-	
-	
-	
 }

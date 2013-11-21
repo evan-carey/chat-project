@@ -25,16 +25,13 @@ public class Server implements MessageListener {
 
 	private Connection connection;
 	private Session session;
-	private boolean transacted = false;
 	private MessageProducer replyProducer;
 	private MessageProtocol messageProtocol;
-	private ServerRunChatRoom serverrunchatroom;// added by JW
+	private ServerRunChatRoom serverrunchatroom;
 	/** User accounts */
 	private Accounts accounts;
-	private HashMap<String, String> onlineUsers;
-
-	private Map<String, Destination> loggedOn; // hashmap of online users and
-												// their Destinations
+	private HashMap<String, String> onlineUsers; // map of online users
+	private Map<String, Destination> loggedOn; // map of online users and their Destinations
 	private boolean setMulticastFlag=false;
 	
 	public Server() {
@@ -42,15 +39,13 @@ public class Server implements MessageListener {
 		onlineUsers = new HashMap<String, String>();
 		loggedOn = new HashMap<String, Destination>();
 		try {
-			// This message broker is embedded
 			BrokerService broker = new BrokerService();
 			broker.setPersistent(false);
 			broker.setUseJmx(false);
 			broker.addConnector(ServerConstants.messageBrokerUrl);
 			broker.start();
-			serverrunchatroom = new ServerRunChatRoom();// added by JW
+			serverrunchatroom = new ServerRunChatRoom();
 		} catch (Exception e) {
-			// Handle the exception appropriately
 			System.err.println("Unable to initilize the server.");
 		}
 
@@ -62,26 +57,19 @@ public class Server implements MessageListener {
 
 		// Attach shutdown hook to server
 		ShutdownHook.attachShutdownHook(this);
-
 	}
 
 	private void setupMessageQueueConsumer() {
-		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-				ServerConstants.messageBrokerUrl);
+		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(ServerConstants.messageBrokerUrl);
 
 		try {
-
 			// Create the client-to-server Queue
 			connection = connectionFactory.createConnection();
 			connection.start();
-			this.session = connection.createSession(this.transacted,
-					ServerConstants.ackMode);
-			// Destination adminQueue =
-			// this.session.createTopic(ServerConstants.messageTopicName);
+			this.session = connection.createSession(false, ServerConstants.ackMode);
 
 			// Server consumes from adminqueue
-			Destination adminQueue = this.session
-					.createQueue(ServerConstants.produceTopicName);
+			Destination adminQueue = this.session.createQueue(ServerConstants.produceTopicName);
 
 			Destination broadcast=this.session.createTopic("publicBroadcast");
 			// Create the server-to-client topic
@@ -96,17 +84,11 @@ public class Server implements MessageListener {
 			this.replyProducer = this.session.createProducer(null);
 			this.replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
-			// Set up a consumer to consume messages off of the administration
-			// queue
+			// Set up a consumer to consume messages off of the administration queue
 			MessageConsumer consumer = this.session.createConsumer(adminQueue);
 			consumer.setMessageListener(this);
 			
-			
-			
-			
-			
-			Destination adminQueue_2 = this.session//
-					.createQueue("templistchatroomqueue");//
+			Destination adminQueue_2 = this.session.createQueue("templistchatroomqueue");//
 			MessageConsumer consumer_2 = this.session.createConsumer(adminQueue_2);//
 			consumer_2.setMessageListener(this);	//
 			
@@ -116,7 +98,7 @@ public class Server implements MessageListener {
 	}
 
 	private void addUserOnline(TextMessage tm) throws JMSException {
-		if(tm.getText() == null || tm.getJMSMessageID() == null){
+		if(tm.getText() == null || tm.getJMSMessageID() == null) {
 			return;
 		}
 		String clientID = tm.getJMSMessageID();
@@ -144,11 +126,6 @@ public class Server implements MessageListener {
 		TextMessage tm = this.session.createTextMessage();
 		tm.setText(users);
 		this.replyProducer.send(dest, tm);
-		/**
-		 * Find a way to set the reply destination and were golden on this
-		 */
-		// this.replyProducer.send( dest, this.session.createTextMessage(users)
-		// );
 	}
 
 	private void handleMessage(Message tmp) throws JMSException {
@@ -174,7 +151,6 @@ public class Server implements MessageListener {
 		default:
 			break;
 		}
-
 	}
 	
 	private void setMulticast(Message tmp) {
@@ -183,7 +159,6 @@ public class Server implements MessageListener {
 		try {
 			commandParse = parse.getText().split(" ");
 		} catch (JMSException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		int parseSize=commandParse.length;
@@ -191,7 +166,7 @@ public class Server implements MessageListener {
 		for(int i=1;i<parseSize;i++){
 			if(!onlineUsers.containsKey(commandParse[i])) multicastInValid=true;
 		}
-		if(multicastInValid==true){
+		if (multicastInValid) {
 			TextMessage tm = null;
 			try {
 				tm = this.session.createTextMessage();
@@ -199,13 +174,11 @@ public class Server implements MessageListener {
 				tm.setText("failtosetmulticast");
 				this.replyProducer.send(tmp.getJMSReplyTo(), tm);
 				System.out.println("sent back failtosetmulticast");
-			} catch (JMSException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+			} catch (JMSException e) {
+				e.printStackTrace();
 			}
 			
-		}else 
-		{
+		} else {
 			TextMessage tm = null;
 			String multicastTopic = null;
 			try {
@@ -213,9 +186,8 @@ public class Server implements MessageListener {
 				tm.setText("setmulticast");
 				this.replyProducer.send(tmp.getJMSReplyTo(), tm);
 				multicastTopic=tmp.getJMSCorrelationID()+".multicast";
-			} catch (JMSException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+			} catch (JMSException e) {
+				e.printStackTrace();
 			}
 
 			for(int i=1;i<parseSize;i++){
@@ -226,15 +198,11 @@ public class Server implements MessageListener {
 					tm.setText(multicastTopic);
 					this.replyProducer.send(multidest, tm);
 				} catch (JMSException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
-			
 			setMulticastFlag=true;
 		}
-
-		
 	}
 
 	private void setBroadcast(Destination dest) {
@@ -243,11 +211,9 @@ public class Server implements MessageListener {
 			tm = this.session.createTextMessage();
 			tm.setText("setbroadcast");
 			this.replyProducer.send(dest, tm);
-		} catch (JMSException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		} catch (JMSException e) {
+			e.printStackTrace();
 		}
-		
 	}
 
 	private boolean scanID(Message message){
@@ -302,15 +268,14 @@ public class Server implements MessageListener {
 	
 	private void listChatRoomUsers(Message message){
 		TextMessage tm = (TextMessage) message;
-			String[] args = null;
-			try {
-				args = tm.getText().split(" ");
-			} catch (JMSException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			String username=args[0];
-			String chatroomname=args[1];
+		String[] args = null;
+		try {
+			args = tm.getText().split(" ");
+		} catch (JMSException e) {
+			e.printStackTrace();
+		}
+		String username=args[0];
+		String chatroomname=args[1];
 		
 		try {
 			TextMessage response = this.session.createTextMessage();
@@ -320,11 +285,11 @@ public class Server implements MessageListener {
 			System.out.println(responseText);
 
 			response.setText(responseText);
-			MessageProducer tempProducer = this.session
-					.createProducer(message.getJMSReplyTo());
+			MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 			tempProducer.send(message.getJMSReplyTo(), response);
 			tempProducer.close();
 		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -333,9 +298,8 @@ public class Server implements MessageListener {
 		String[] args = null;
 		try {
 			args = tm.getText().split(" ");
-		} catch (JMSException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 		String username=args[0];
 		String chatroomname=args[1];
@@ -348,9 +312,8 @@ public class Server implements MessageListener {
 		String[] args = null;
 		try {
 			args = tm.getText().split(" ");
-		} catch (JMSException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 		String username=args[0];
 		String chatroomname=args[1];
@@ -362,8 +325,7 @@ public class Server implements MessageListener {
 		try{
 			String[] command = ((TextMessage)message).getText().split(" ");
 			
-			MessageProducer tempProducer = this.session
-					.createProducer(message.getJMSReplyTo());
+			MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 			
 			if(serverrunchatroom.roomExists(command[1])){
 				TextMessage response = this.session.createTextMessage();
@@ -375,11 +337,9 @@ public class Server implements MessageListener {
 			}
 			serverrunchatroom.createChatRoom(command[1]);
 			
-			
+			// send responses
 			TextMessage response = this.session.createTextMessage();
 			response.setJMSCorrelationID(message.getJMSCorrelationID());
-	
-			
 			response.setText("creation complete");
 			tempProducer.send(message.getJMSReplyTo(), response);
 			String responseText = serverrunchatroom.transmitChatRoomList();
@@ -387,7 +347,7 @@ public class Server implements MessageListener {
 			tempProducer.send(message.getJMSReplyTo(), response);
 			tempProducer.close();
 		}catch(JMSException e){
-			
+			e.printStackTrace();
 		}
 	}
 	
@@ -401,11 +361,11 @@ public class Server implements MessageListener {
 			System.out.println(responseText);
 
 			response.setText(responseText);
-			MessageProducer tempProducer = this.session
-					.createProducer(message.getJMSReplyTo());
+			MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
 			tempProducer.send(message.getJMSReplyTo(), response);
 			tempProducer.close();
 		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -418,7 +378,7 @@ public class Server implements MessageListener {
 			e.printStackTrace();
 		}
 		onlineUsers.remove(msg[0]);
-		loggedOn.remove(msg[0]);//added by JW
+		loggedOn.remove(msg[0]);
 		return;
 	}
 	
@@ -526,18 +486,16 @@ public class Server implements MessageListener {
 			if (text.charAt(0) == '-') {
 				handleMessage(message);
 			}
-		} catch (JMSException e1) {
-			e1.printStackTrace();
+		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 
 		//Check for special message cases
-		if(scanID(message) == true)
-			return;
-		
+		if (scanID(message)) return;
 		
 		//skip for the rest if it's a multicast command      added by JW
-		if(setMulticastFlag==true){
-			setMulticastFlag=false;
+		if (setMulticastFlag) {
+			setMulticastFlag = false;
 			return;
 		}
 
@@ -566,9 +524,7 @@ public class Server implements MessageListener {
 				// respond message
 				// TextMessage response = this.session.createTextMessage();
 
-				if (messageText.contains("get")
-						&& messageText.contains("online")
-						&& messageText.contains("user")) {
+				if (messageText.contains("get") && messageText.contains("online") && messageText.contains("user")) {
 
 					reportOnlineUsers(tm.getJMSDestination());
 					return;
@@ -596,7 +552,6 @@ public class Server implements MessageListener {
 
 				// Send the response to the Destination specified by the
 				// JMSReplyTo field of the received message,
-				// this is presumably a temporary queue created by the client
 				try{
 					this.replyProducer.send(message.getJMSReplyTo(), response);
 				}catch(UnsupportedOperationException e){
@@ -612,10 +567,9 @@ public class Server implements MessageListener {
 		// check if username is in database
 		if (!accounts.hasUsername(username))
 			return "Account does not exist.";
-		// if it does, verify the password
+		// if it is, verify the password
 		try {
 			if (password.equals(accounts.getPassword(username)))
-
 				return "valid";
 			else
 				return "Invalid username/password combination.";
@@ -689,12 +643,10 @@ public class Server implements MessageListener {
 	}
 
 	public static void main(String[] args) {
-		// start server
 		new Server();
 
-		// ugly hack to gracefully terminate server
-		System.out
-				.println("Server initialized. To terminate, press ENTER in the console.");
+		// Gracefully terminate server by hitting ENTER
+		System.out.println("Server initialized. To terminate, press ENTER in the console.");
 		try {
 			System.in.read();
 		} catch (IOException e) {
@@ -702,6 +654,5 @@ public class Server implements MessageListener {
 		}
 		System.out.println("Terminating server.");
 		System.exit(0);
-
 	}
 }

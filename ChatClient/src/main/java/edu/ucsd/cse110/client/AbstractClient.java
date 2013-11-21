@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.client;
 
+import java.util.HashMap;
 import java.util.Random;
 
 import javax.jms.Connection;
@@ -24,6 +25,7 @@ public abstract class AbstractClient implements MessageListener {
 	protected MessageConsumer consumer;
 
 	protected String username, password;
+	protected HashMap<String,MessageConsumer> topicConsumerContainer=new HashMap<String,MessageConsumer>();
 
 	public AbstractClient() {
 		// initialize connection factory
@@ -67,6 +69,14 @@ public abstract class AbstractClient implements MessageListener {
 		Destination consumerTopic = session.createTopic(queue);
 		MessageConsumer consumer_Topic = session.createConsumer(consumerTopic);
 		consumer_Topic.setMessageListener(this);
+		topicConsumerContainer.put(queue,consumer_Topic);//added by JW
+	}
+	
+	//added by JW
+	public void removeTopicConsumer(String queue) throws JMSException {
+		//if(topicConsumerContainer.containsKey(queue)) System.out.println("before deleting, there is a consumer confirmed"); // for test
+		topicConsumerContainer.get(queue).close();
+		topicConsumerContainer.remove(queue);
 	}
 	
 	public void setProducer(Destination dest) throws JMSException {
@@ -158,6 +168,7 @@ public abstract class AbstractClient implements MessageListener {
 					} catch (JMSException e) {
 						e.printStackTrace();
 					}
+					System.out.println("Done!");
 				}
 			});
 		}

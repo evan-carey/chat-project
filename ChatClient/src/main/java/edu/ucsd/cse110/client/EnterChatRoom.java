@@ -11,7 +11,6 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
-import javax.jms.TemporaryTopic;
 import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -20,14 +19,7 @@ public class EnterChatRoom implements MessageListener {
 	/** Username associated with the client */
 	private String username;
 
-	private static int ackMode;
-	// private static String clientQueueName;
-	
-	//private static String clientTopicName;
-	private boolean flag = true;
-	private boolean transacted = false;
-	
-	//Create the necessary variables to connect to the server 
+	// Create the necessary variables to connect to the server
 	private MessageProducer producer;
 	private MessageProducer producer_chatroom;
 	private MessageConsumer responseConsumer;
@@ -39,21 +31,22 @@ public class EnterChatRoom implements MessageListener {
 	private Destination consumerQueue;
 	private String currentChatRoom;
 
-	public EnterChatRoom(String username) throws JMSException{
-		this.username=username;
-		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-				ClientConstants.messageBrokerUrl);
-		
-		try {
+	public EnterChatRoom(String username) throws JMSException {
+		this.username = username;
+		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(ClientConstants.messageBrokerUrl);
 
+		try {
+			// create connection
 			connection = connectionFactory.createConnection();
 			connection.start();
-			session = connection.createSession(transacted, ClientConstants.ackMode);
+			session = connection.createSession(false, ClientConstants.ackMode);
+			
+			// set producer
 			Destination adminQueue = session.createQueue(ClientConstants.consumeTopicName);
 			this.producer = session.createProducer(adminQueue);
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
-			//set consumer
+			// set consumer
 			consumerQueue = session.createTemporaryTopic();
 			responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
@@ -62,22 +55,19 @@ public class EnterChatRoom implements MessageListener {
 			System.out.println("Please enter the name of the chatroom you want to join in");
 			commandChatRoom("listchatroom");
 			selectChatRoom();
-			//responseConsumer.close(); //unsubscribe from the temporary topic used to transmit chatroomlist
+			// responseConsumer.close(); //unsubscribe from the temporary topic
+			// used to transmit chatroomlist
 			inChatRoom();
 		} catch (JMSException e) {
-			// Handle the exception appropriately
+			e.printStackTrace();
 		}
-
-		
 	}
-
 
 	public void onMessage(Message message) {
 		try {
-			ChatRoomStringList = ((TextMessage)message).getText().split(" ");
-		} catch (JMSException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			ChatRoomStringList = ((TextMessage) message).getText().split(" ");
+		} catch (JMSException e) {
+			e.printStackTrace();
 		}
 		String messageText = null;
 		try {
@@ -85,120 +75,106 @@ public class EnterChatRoom implements MessageListener {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
 
-				
-				System.out.print("\n\"" + messageText 
-						+ "\"\n\n>>");
+				System.out.print("\n\"" + messageText + "\"\n\n>>");
 			}
 		} catch (JMSException e) {
-			// Handle the exception appropriately
+			e.printStackTrace();
 		}
-		
-	}
-	
-	public void commandChatRoom(String command) throws JMSException{
-		txtSender(command,command);
-	
-    }
-	
 
-	
-	public void selectChatRoom() throws JMSException{
-		// Do you want to create one? Implement later and also:created chatroom never deleted
-		boolean chatroomflag=false;
+	}
+
+	public void commandChatRoom(String command) throws JMSException {
+		txtSender(command, command);
+	}
+
+	public void selectChatRoom() throws JMSException {
+		// Do you want to create one? Implement later and also:created chatroom
+		// never deleted
+		boolean chatroomflag = false;
 		String chatroomname = null;
-		//System.out.println("Please enter the name of the chatroom you want to join in");
-		while(!chatroomflag){
-		System.out.print(">>");
-		
-		// Now create the actual message you want to send
-		Scanner keyboard = new Scanner(System.in);
-		chatroomname = keyboard.nextLine();
-		for (String chatroomentry:ChatRoomStringList){
-			if (chatroomname.equals(chatroomentry)) chatroomflag=true;;
+		// System.out.println("Please enter the name of the chatroom you want to join in");
+		while (!chatroomflag) {
+			System.out.print(">>");
+
+			Scanner keyboard = new Scanner(System.in);
+			chatroomname = keyboard.nextLine();
 			
+			for (String chatroomentry : ChatRoomStringList) {
+				if (chatroomname.equals(chatroomentry))
+					chatroomflag = true;
+			}
+			if (!chatroomflag) {
+				System.out.println("Chatroom name is case sensitive, your chatroom name is not in the list, please reselect");
+			}
 		}
-		
-		if(!chatroomflag){
-			System.out.println("chatroom name is case sensitive, your chatroom name is not in the list, please reselect");			
-		}	
-		}
-		
-		//send chatroom login message:
-		currentChatRoom=chatroomname;
-		txtSender(username+" "+currentChatRoom,"chatroomlogin");
-		
+
+		// send chatroom login message:
+		currentChatRoom = chatroomname;
+		txtSender(username + " " + currentChatRoom, "chatroomlogin");
+
+		// set producer
 		Destination consumeTopic_chatroom = session.createTopic(chatroomname);
 		this.producer_chatroom = session.createProducer(consumeTopic_chatroom);
 		this.producer_chatroom.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-		//Set consumer	
+		
+		// set consumer
 		responseConsumer_chatroom = session.createConsumer(consumeTopic_chatroom);
 		responseConsumer_chatroom.setMessageListener(this);
 		return;
-	    	
-    }
-	
-	
-	
-	public void inChatRoom(){
+	}
+
+	public void inChatRoom() {
 
 		try {
-						
-			while (flag) {
+			while (true) {
 				System.out.print(">>");
-				
-				// Now create the actual message you want to send
+
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
-				
+
 				if ("Command:LISTCHATROOM".equalsIgnoreCase(message)) {
-					
+
 					System.out.println("The current chatroom list");
 					commandChatRoom("listchatroom");
 					continue;
 				}
-				
+
 				if ("Command:LISTCHATROOMUSERS".equalsIgnoreCase(message)) {
-					
+
 					System.out.println("The current chatroom userlist is:");
-					txtSender(username+" "+currentChatRoom,"listchatroomusers");
+					txtSender(username + " " + currentChatRoom, "listchatroomusers");
 					continue;
 				}
-				
+
 				if ("Command:CREATECHATROOM".equalsIgnoreCase(message)) {
-					System.out.println("please enter the name of the chatroom you want to create");
+					System.out.println("Please enter the name of the chatroom you want to create.");
 					System.out.print(">>");
 					String chatroomname = keyboard.nextLine();
-					txtSender("createchatroom"+" "+chatroomname,"createchatroom");
+					txtSender("createchatroom " + chatroomname, "createchatroom");
 					continue;
 				}
-				
+
 				if ("Command:quitchatroom".equalsIgnoreCase(message)) {
-					
-					System.out.println("Client quits current chatroom,return to default"
-							+ " interface");
-					txtSender(username+" "+currentChatRoom,"chatroomlogout");
+					System.out.println("Client quit current chatroom, return to default interface");
+					txtSender(username + " " + currentChatRoom, "chatroomlogout");
 					connection.close();
 					return;
 				}
-				
-				message="["+username+"]"+":"+message;
+
+				message = "[" + username + "]" + ":" + message;
 				TextMessage txtMessage = session.createTextMessage();
 				txtMessage.setText(message);
 
-
 				this.producer_chatroom.send(txtMessage);
 			}
-		
+
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
-	
-	
-
 
 	}
-	
-	public void txtSender(String content, String correlationid) throws JMSException{
+
+	public void txtSender(String content, String correlationid) throws JMSException {
 		TextMessage txtMessage = session.createTextMessage();
 		txtMessage.setText(content);
 		txtMessage.setJMSReplyTo(consumerQueue);
@@ -206,9 +182,9 @@ public class EnterChatRoom implements MessageListener {
 		txtMessage.setJMSCorrelationID(correlationId);
 		this.producer.send(txtMessage);
 	}
-	
-	public static void main(String[] args) throws JMSException{
+
+	public static void main(String[] args) throws JMSException {
 		new EnterChatRoom("testname");
 	}
-	
+
 }
