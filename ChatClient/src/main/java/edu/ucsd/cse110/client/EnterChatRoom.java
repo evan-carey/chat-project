@@ -161,7 +161,15 @@ public class EnterChatRoom implements MessageListener {
 					return;
 				}
 
-				message = "[" + username + "]" + ":" + message;
+				if ("Command:whereami".equalsIgnoreCase(message)) {
+					
+					System.out.println("You are in the ChatRoom:"
+							+ currentChatRoom);
+
+					return;
+				}
+				
+				message="["+username+"]"+":"+message;
 				TextMessage txtMessage = session.createTextMessage();
 				txtMessage.setText(message);
 

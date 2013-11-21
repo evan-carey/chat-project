@@ -7,7 +7,6 @@ import java.util.Set;
 import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
-import javax.jms.MessageProducer;
 import javax.jms.Session;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -15,9 +14,6 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 public class ServerRunChatRoom {
     private Connection connection;
     private Session session;
-    private boolean transacted = false;
-	private MessageProtocol messageProtocol;
-	private MessageProducer replyProducer;
 	public static final String DEFAULTROOM = "CHATROOM";
 	public static final String DEFAULTROOM_1 = "CHATROOM_1";
 	private static Set<Destination> CHATROOMLIST;
@@ -30,19 +26,7 @@ public class ServerRunChatRoom {
         connection = connectionFactory.createConnection();
         connection.start();
         //above could be commented out, or add connection.close();
-        this.session = connection.createSession(this.transacted, ServerConstants.ackMode);
-        this.messageProtocol = new MessageProtocol();
-
-        
-//        //operates on server commands queue
-//        this.session = connection.createSession(this.transacted, ServerConstants.ackMode);
-//        Destination adminQueue = this.session.createTopic(ServerConstants.messageTopicName);
-//        Destination produceTopic = this.session.createTopic(ServerConstants.produceTopicName);
-//        this.replyProducer = this.session.createProducer(produceTopic);
-//        this.replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-//        MessageConsumer consumer = this.session.createConsumer(adminQueue);
-//        consumer.setMessageListener(this);
-        
+        this.session = connection.createSession(false, ServerConstants.ackMode);      
         
         Destination defaultroom = this.session.createTopic(DEFAULTROOM);
         Destination defaultroom_1 = this.session.createTopic(DEFAULTROOM_1);
@@ -83,13 +67,11 @@ public class ServerRunChatRoom {
 	}
 	
 	public String transmitChatRoomList(){
-
-	    	String messageText="";
-			for (String i:this.displayChatRoomList())
-			    messageText = messageText+i+" ";
-
-			return messageText;
-		}
+    	String messageText="";
+		for (String i:this.displayChatRoomList())
+		    messageText = messageText+i+" ";
+		return messageText;
+	}
 
 	/**
 	 * Accessor method that finds a room
@@ -130,8 +112,8 @@ public class ServerRunChatRoom {
 			return false;
 		}
 		
-		for (String i:this.displayChatRoomList()){
-			if(i.equals(roomToRemove)){
+		for (String i:this.displayChatRoomList()) {
+			if(i.equals(roomToRemove)) {
 				//Remove room from both lists
 				CHATROOMLIST.remove(roomToRemove);
 				CHATROOMSTINGLIST.remove(roomToRemove);
@@ -157,7 +139,7 @@ public class ServerRunChatRoom {
     	String messageText="";
     	String[] chatroomuserlist=CHATROOMUSERLIST.get(chatroomname).toArray(new String[0]);
 		for (String i:chatroomuserlist)
-		    messageText = messageText+i+" ";
+		    messageText = messageText + i + " ";
 
 		return messageText;
 	}

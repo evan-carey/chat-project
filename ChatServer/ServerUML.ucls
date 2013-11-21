@@ -3,62 +3,88 @@
   associations="true" dependencies="false" nesting-relationships="true">  
   <class id="1" language="java" name="edu.ucsd.cse110.server.Server" project="ChatServer" 
     file="/ChatServer/src/main/java/edu/ucsd/cse110/server/Server.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="242" y="327"/>    
+    <position height="-1" width="-1" x="154" y="433"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <class id="2" language="java" name="edu.ucsd.cse110.server.MessageProtocol" project="ChatServer" 
-    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/MessageProtocol.java" binary="false" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="484" y="72"/>    
+  <class id="2" language="java" name="edu.ucsd.cse110.server.Server.ShutdownHook" project="ChatServer" 
+    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/Server.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="138" y="33"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
   </class>  
-  <interface id="3" language="java" name="javax.jms.MessageListener" project="ChatServer" 
-    file="/home/linux/ieng6/cs110f/cs110fbv/.m2/repository/org/apache/activemq/activemq-all/5.8.0/activemq-all-5.8.0.jar" 
-    binary="true" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="209" y="74"/>    
+  <class id="3" language="java" name="edu.ucsd.cse110.server.ServerConstants" project="ChatServer" 
+    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/ServerConstants.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="367" y="81"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
-  </interface>  
-  <interface id="4" language="java" name="javax.jms.MessageProducer" project="ChatServer" 
-    file="/home/linux/ieng6/cs110f/cs110fbv/.m2/repository/org/apache/activemq/activemq-all/5.8.0/activemq-all-5.8.0.jar" 
-    binary="true" corner="BOTTOM_RIGHT">    
-    <position height="-1" width="-1" x="615" y="354"/>    
+  </class>  
+  <class id="4" language="java" name="edu.ucsd.cse110.server.ServerRunChatRoom" project="ChatServer" 
+    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/ServerRunChatRoom.java" binary="false" corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="716" y="460"/>    
     <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
       visibility="true">      
       <attributes public="true" package="true" protected="true" private="true" static="true"/>      
       <operations public="true" package="true" protected="true" private="true" static="true"/>    
     </display>  
-  </interface>  
-  <association id="5">    
+  </class>  
+  <class id="5" language="java" name="edu.ucsd.cse110.server.accountinfo.Accounts" project="ChatServer" 
+    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/accountinfo/Accounts.java" binary="false" 
+    corner="BOTTOM_RIGHT">    
+    <position height="-1" width="-1" x="638" y="99"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </class>  
+  <class id="6" language="java" name="edu.ucsd.cse110.server.accountinfo.AccountException" project="ChatServer" 
+    file="/ChatServer/src/main/java/edu/ucsd/cse110/server/accountinfo/AccountException.java" binary="false" 
+    corner="BOTTOM_RIGHT">    
+    <position height="171" width="287" x="817" y="-4"/>    
+    <display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" accessors="true" 
+      visibility="true">      
+      <attributes public="true" package="true" protected="true" private="true" static="true"/>      
+      <operations public="true" package="true" protected="true" private="true" static="true"/>    
+    </display>  
+  </class>  
+  <association id="7">    
     <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="6" name="messageProtocol"/>      
-      <multiplicity id="7" minimum="0" maximum="1"/>    
-    </end>    
-    <end type="TARGET" refId="2" navigable="true"/>    
-    <display labels="true" multiplicity="true"/>  
-  </association>  
-  <association id="8">    
-    <end type="SOURCE" refId="1" navigable="false">      
-      <attribute id="9" name="replyProducer"/>      
-      <multiplicity id="10" minimum="0" maximum="1"/>    
+      <attribute id="8" name="serverrunchatroom"/>      
+      <multiplicity id="9" minimum="0" maximum="1"/>    
     </end>    
     <end type="TARGET" refId="4" navigable="true"/>    
     <display labels="true" multiplicity="true"/>  
   </association>  
-  <realization id="11">    
+  <association id="10">    
+    <end type="SOURCE" refId="1" navigable="false">      
+      <attribute id="11" name="accounts"/>      
+      <multiplicity id="12" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="5" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
+  <nesting id="13">    
     <end type="SOURCE" refId="1"/>    
-    <end type="TARGET" refId="3"/>  
-  </realization>  
+    <end type="TARGET" refId="2"/>  
+  </nesting>  
+  <association id="14">    
+    <end type="SOURCE" refId="2" navigable="false">      
+      <attribute id="15" name="server"/>      
+      <multiplicity id="16" minimum="0" maximum="1"/>    
+    </end>    
+    <end type="TARGET" refId="1" navigable="true"/>    
+    <display labels="true" multiplicity="true"/>  
+  </association>  
   <classifier-display autosize="true" stereotype="true" package="true" initial-value="false" signature="true" 
     accessors="true" visibility="true">    
     <attributes public="true" package="true" protected="true" private="true" static="true"/>    

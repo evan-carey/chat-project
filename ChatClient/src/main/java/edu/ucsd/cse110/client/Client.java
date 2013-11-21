@@ -20,7 +20,7 @@ public class Client extends AbstractClient {
 
 	private Destination editQueueProduce;
 	private Destination editQueueConsume;
-	private Destination broadcastTopic;
+	//private Destination broadcastTopic;
 	private String multicastTopic;
 	private boolean broadcastFlag = false;
 	private boolean multicastFlag = false;
@@ -47,12 +47,10 @@ public class Client extends AbstractClient {
 			while (true) {
 				System.out.print("[" + username + "]: ");
 
-				// Now create the actual message you want to send
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
 
-				// If the user types the keyword "logoff"
-				// they will be disconnected
+				// If the user types the keyword "logoff", they will be disconnected from the server
 				if ("logoff".equalsIgnoreCase(message)) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText(username + " has logged off");
@@ -70,15 +68,21 @@ public class Client extends AbstractClient {
 
 				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
 					new EnterChatRoom(username);
-
+				
 				} else if ("cancel broadcast".equalsIgnoreCase(message)) {
-					if (broadcastFlag)
-						setProducer(producerQueue);
-
+					if(broadcastFlag) setProducer(producerQueue);
+				
 				} else if ("cancel multicast".equalsIgnoreCase(message)) {
-					if (multicastFlag)
+					if(multicastFlag) {
 						setProducer(producerQueue);
-
+					
+						TextMessage txtMessage = session.createTextMessage();
+						txtMessage.setText(multicastTopic);
+						txtMessage.setJMSCorrelationID("cancelmulticast");
+						txtMessage.setJMSReplyTo(consumerQueue);
+						txtMessage.setJMSDestination(producerQueue);
+						this.producer.send(txtMessage);
+					}
 				} else if (message.equals("disconnect")) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("disconnect");
@@ -110,14 +114,12 @@ public class Client extends AbstractClient {
 			System.out.println("You are in Broadcast Mode");
 			return;
 		}
-
 		if (multicastFlag) {
 			System.out.println("You are in Multicast Mode");
 			return;
 		}
 		if (privateChat) {
-			System.out.println("You are in a Peer-to-Peer chat with"
-					+ privateObject);
+			System.out.println("You are in a Peer-to-Peer chat with" + privateObject);
 			return;
 		}
 		System.out.println("You are sending messages to the Server");
@@ -166,7 +168,6 @@ public class Client extends AbstractClient {
 			txtMessage.setJMSCorrelationID(correlationID);
 
 			// this.producer.send(txtMessage);
-
 			this.accountProducer.send(txtMessage);
 
 		} catch (JMSException e) {
@@ -186,14 +187,26 @@ public class Client extends AbstractClient {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
 
-				if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("setMulticastConsumer")) {
-					System.out.println("setMulticastConsumer command processed");
+				if(message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("setMulticastConsumer")){
+					String[] tempName=messageText.split("multicast");
+					System.out.println("You will be multicast by "+ tempName[0]);
 					setTopicConsumer(messageText);
 					return;
 				}
 
 				if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("failtosetmulticast")) {
 					System.out.println("Username Parameters not valid! Please reenter your command, this command will do nothing");
+					return;
+				}
+				
+				if (message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("removemulticastconsumer")){
+					TextMessage temp=((TextMessage) message);
+					String arg=temp.getText();
+					//System.out.println("recieved "+message.getJMSCorrelationID()+" and to pass"+arg);// for test
+					removeTopicConsumer(arg);
+					
+					String[] tempName=arg.split(".multicast");
+					System.out.println(tempName[0]+" just cancelled multicasting to you");
 					return;
 				}
 
