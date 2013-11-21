@@ -35,7 +35,8 @@ public class Server implements MessageListener {
 
 	private Map<String, Destination> loggedOn; // hashmap of online users and
 												// their Destinations
-
+	private boolean setMulticastFlag=false;
+	
 	public Server() {
 		accounts = new Accounts();
 		onlineUsers = new HashMap<String, String>();
@@ -167,31 +168,84 @@ public class Server implements MessageListener {
 		case 'b':
 			setBroadcast(tmp.getJMSReplyTo());
 			break;
+		case 'm':
+			setMulticast(tmp);
+			break;
 		default:
 			break;
 		}
 
 	}
 	
+	private void setMulticast(Message tmp) {
+		TextMessage parse=(TextMessage) tmp;
+		String[] commandParse = null;
+		try {
+			commandParse = parse.getText().split(" ");
+		} catch (JMSException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		int parseSize=commandParse.length;
+		boolean multicastInValid=false;
+		for(int i=1;i<parseSize;i++){
+			if(!onlineUsers.containsKey(commandParse[i])) multicastInValid=true;
+		}
+		if(multicastInValid==true){
+			TextMessage tm = null;
+			try {
+				tm = this.session.createTextMessage();
+				tm.setJMSCorrelationID("failtosetmulticast");
+				tm.setText("failtosetmulticast");
+				this.replyProducer.send(tmp.getJMSReplyTo(), tm);
+				System.out.println("sent back failtosetmulticast");
+			} catch (JMSException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
+		}else 
+		{
+			TextMessage tm = null;
+			String multicastTopic = null;
+			try {
+				tm = this.session.createTextMessage();
+				tm.setText("setmulticast");
+				this.replyProducer.send(tmp.getJMSReplyTo(), tm);
+				multicastTopic=tmp.getJMSCorrelationID()+".multicast";
+			} catch (JMSException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+
+			for(int i=1;i<parseSize;i++){
+				Destination multidest=loggedOn.get(commandParse[i]);
+				try {
+					tm = this.session.createTextMessage();
+					tm.setJMSCorrelationID("setMulticastConsumer");
+					tm.setText(multicastTopic);
+					this.replyProducer.send(multidest, tm);
+				} catch (JMSException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+			setMulticastFlag=true;
+		}
+
+		
+	}
+
 	private void setBroadcast(Destination dest) {
 		TextMessage tm = null;
 		try {
 			tm = this.session.createTextMessage();
+			tm.setText("setbroadcast");
+			this.replyProducer.send(dest, tm);
 		} catch (JMSException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
-		}
-		try {
-			tm.setText("setbroadcast");
-		} catch (JMSException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
-			this.replyProducer.send(dest, tm);
-		} catch (JMSException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		
 	}
@@ -364,6 +418,7 @@ public class Server implements MessageListener {
 			e.printStackTrace();
 		}
 		onlineUsers.remove(msg[0]);
+		loggedOn.remove(msg[0]);//added by JW
 		return;
 	}
 	
@@ -478,7 +533,13 @@ public class Server implements MessageListener {
 		//Check for special message cases
 		if(scanID(message) == true)
 			return;
-
+		
+		
+		//skip for the rest if it's a multicast command      added by JW
+		if(setMulticastFlag==true){
+			setMulticastFlag=false;
+			return;
+		}
 
 		// Regular message handling
 		System.out.println("Message received by server");
@@ -592,10 +653,12 @@ public class Server implements MessageListener {
 
 		// set new producer for user1
 		response.setText("connect");
+		response.setJMSCorrelationID(user2);
 		response.setJMSReplyTo(loggedOn.get(user2));
 
 		// set new producer for user2
 		response2.setText("connect");
+		response2.setJMSCorrelationID(message.getJMSCorrelationID());
 		response2.setJMSReplyTo(message.getJMSReplyTo());
 
 		this.replyProducer.send(message.getJMSReplyTo(), response);

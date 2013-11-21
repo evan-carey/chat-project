@@ -22,13 +22,17 @@ public class Client extends AbstractClient {
 	private Destination editQueueProduce;
 	private Destination editQueueConsume;
     private Destination broadcastTopic;
-    
+    private String multicastTopic;
+    private boolean broadcastFlag=false;
+    private boolean multicastFlag=false;    
+    private boolean privateChat=false;
+    private String privateObject;
 	
 
 	public Client(String username) {
 		super();
 		setUsername(username);
-
+		multicastTopic=username+".multicast";
 		System.out.println(">>>>>>>>>>>>>>" + username);
 		enterServer();
 	}
@@ -63,13 +67,20 @@ public class Client extends AbstractClient {
 				} else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
 				
-				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
+				} 
+				 else if ("whereami".equalsIgnoreCase(message)) {
+						whereAmI();
+					
+					}else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
 					new EnterChatRoom(username);
 				
 				}   else if ("cancel broadcast".equalsIgnoreCase(message)) {
-					setProducer(producerQueue);
+					if(broadcastFlag==true) setProducer(producerQueue);
 				
-				} else if (message.equals("disconnect")) {
+				}   else if ("cancel multicast".equalsIgnoreCase(message)) {
+					if(multicastFlag==true)setProducer(producerQueue);
+				
+				}else if (message.equals("disconnect")) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("disconnect");
 					this.producer.send(txtMessage);
@@ -92,6 +103,16 @@ public class Client extends AbstractClient {
 		} catch (JMSException e) {
 			e.printStackTrace();
 		} 
+	}
+
+	private void whereAmI() {
+		if(broadcastFlag==true) {System.out.println("You are in Broadcast Mode");return;}
+		
+		if(multicastFlag==true) {System.out.println("You are in Multicast Mode");return;}
+		if(privateChat==true){
+			System.out.println("You are in a Peer-to-Peer chat with"+privateObject);return;
+		}
+		System.out.println("You are sending messages to the Server");return;
 	}
 
 	private void getInfo() {
@@ -156,15 +177,39 @@ public class Client extends AbstractClient {
 			} else if (message instanceof TextMessage) {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
+				
+
+				if(message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("setMulticastConsumer")){
+					System.out.println("setMulticastConsumer command processed");
+					setTopicConsumer(messageText);
+					return;
+				}
+
+				if (message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("failtosetmulticast")){
+					System.out.println("Username Parameters not valid! Please reenter your command, this command will do nothing");
+					return;
+				}
 
 				System.out.println("["+message.getJMSCorrelationID()+"]: "+messageText);
 
 				if (messageText.equals("connect"))
+				{
+					privateChat=true;
 					setProducer(message.getJMSReplyTo());
+					privateObject=message.getJMSCorrelationID();
+				}
 				else if (messageText.equals("disconnect"))
+				{
+					privateChat=false;
 					setProducer(producerQueue);
+				}
 				else if (messageText.equals("setbroadcast")){
 					setTopicProducer("publicBroadcast");
+					broadcastFlag=true;
+				}
+				else if (messageText.equals("setmulticast")){
+					setTopicProducer(multicastTopic);
+					multicastFlag=true;
 				}
 			}
 		} catch (JMSException e) {
