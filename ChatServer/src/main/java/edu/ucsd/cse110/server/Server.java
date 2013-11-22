@@ -2,7 +2,9 @@ package edu.ucsd.cse110.server;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
@@ -35,7 +37,12 @@ public class Server implements MessageListener {
 
 	private Map<String, Destination> loggedOn; // hashmap of online users and
 												// their Destinations
+	
+	private HashMap<String,Set<String>> multicastContainer=new HashMap<String,Set<String>>();
+	private Set<String> privateChatContainer=new HashSet<String>();
 	private boolean setMulticastFlag=false;
+	private String[] commandParse = null;
+	private int parseSize;
 	
 	public Server() {
 		accounts = new Accounts();
@@ -179,14 +186,14 @@ public class Server implements MessageListener {
 	
 	private void setMulticast(Message tmp) {
 		TextMessage parse=(TextMessage) tmp;
-		String[] commandParse = null;
+		//String[] commandParse = null;
 		try {
 			commandParse = parse.getText().split(" ");
 		} catch (JMSException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		int parseSize=commandParse.length;
+		parseSize=commandParse.length;
 		boolean multicastInValid=false;
 		for(int i=1;i<parseSize;i++){
 			if(!onlineUsers.containsKey(commandParse[i])) multicastInValid=true;
@@ -218,8 +225,11 @@ public class Server implements MessageListener {
 				e1.printStackTrace();
 			}
 
+			Set<String> userList=new HashSet<String>();
+			
 			for(int i=1;i<parseSize;i++){
 				Destination multidest=loggedOn.get(commandParse[i]);
+				userList.add(commandParse[i]);
 				try {
 					tm = this.session.createTextMessage();
 					tm.setJMSCorrelationID("setMulticastConsumer");
@@ -231,6 +241,7 @@ public class Server implements MessageListener {
 				}
 			}
 			
+			multicastContainer.put(multicastTopic,userList);
 			setMulticastFlag=true;
 		}
 
@@ -294,12 +305,44 @@ public class Server implements MessageListener {
 			//System.out.println("chatroomlogout");
 			chatRoomLogOut(message);
 			return true;
+		case "cancelmulticast":
+			//System.out.println("cancelmulticast");
+			cancelMulticast(message);
+			return true;
 		default:
 			return false;
 		}
 	}
 	
 	
+	private void cancelMulticast(Message message) {
+		TextMessage tm = null;
+		TextMessage convert=(TextMessage) message;
+		String tempTopicName=null;
+		
+		try {
+			tempTopicName=convert.getText();
+		} catch (JMSException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		for(String i:multicastContainer.get(tempTopicName)){
+			Destination multidest=loggedOn.get(i);
+			try {
+				tm = this.session.createTextMessage();
+				tm.setJMSCorrelationID("removemulticastconsumer");
+				tm.setText(tempTopicName);
+				this.replyProducer.send(multidest, tm);
+				//System.out.println("Sending"+tm.getJMSCorrelationID()+"to"+commandParse[i]); // for test
+			} catch (JMSException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		multicastContainer.remove(tempTopicName);
+	}
+
 	private void listChatRoomUsers(Message message){
 		TextMessage tm = (TextMessage) message;
 			String[] args = null;
@@ -558,7 +601,11 @@ public class Server implements MessageListener {
 					loggedOn.put(user, userDest);
 					System.out.println("map users: " + loggedOn.size());
 				}
-
+				
+				if (!onlineUsers.containsKey(user) && user != null) {
+					addUserOnline(txtMsg);
+				}
+				
 				if (messageText.contains("-chat")) {
 					handleMessage(message);
 					chatflag = true; //<<< this is garbage, use for testing purposes
@@ -609,6 +656,8 @@ public class Server implements MessageListener {
 	}
 
 	public String validate(String username, String password) {
+		if (loggedOn.containsKey(username))
+			return "The usersname trying to log on already logged on";
 		// check if username is in database
 		if (!accounts.hasUsername(username))
 			return "Account does not exist.";
@@ -647,10 +696,28 @@ public class Server implements MessageListener {
 		TextMessage tmp = (TextMessage) message;
 		String[] msg = tmp.getText().split(" ");
 		String user2 = msg[1];
+		
+		
+		if(!loggedOn.containsKey(user2)){
+			TextMessage systemResponse=this.session.createTextMessage();
+			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is a logged on user. This command will do nothing");
+			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
+			return;
+		}
+		if( privateChatContainer.contains(message.getJMSCorrelationID()) || privateChatContainer.contains(user2)){
+			TextMessage systemResponse=this.session.createTextMessage();
+			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is not in another chat.This command will do nothing");
+			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
+			return;
+		}
+
+
 		TextMessage response = this.session.createTextMessage();
 		TextMessage response2 = this.session.createTextMessage();
 		System.out.println("Chat session between: " + message.getJMSCorrelationID() + " and " + user2);
-
+		
+		privateChatContainer.add(message.getJMSCorrelationID());
+		privateChatContainer.add(user2);
 		// set new producer for user1
 		response.setText("connect");
 		response.setJMSCorrelationID(user2);

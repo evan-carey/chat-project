@@ -78,8 +78,16 @@ public class Client extends AbstractClient {
 					if(broadcastFlag==true) setProducer(producerQueue);
 				
 				}   else if ("cancel multicast".equalsIgnoreCase(message)) {
-					if(multicastFlag==true)setProducer(producerQueue);
-				
+					if(multicastFlag==true) {
+					setProducer(producerQueue);
+					
+					TextMessage txtMessage = session.createTextMessage();
+					txtMessage.setText(multicastTopic);
+					txtMessage.setJMSCorrelationID("cancelmulticast");
+					txtMessage.setJMSReplyTo(consumerQueue);
+					txtMessage.setJMSDestination(producerQueue);
+					this.producer.send(txtMessage);
+					}
 				}else if (message.equals("disconnect")) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("disconnect");
@@ -180,13 +188,25 @@ public class Client extends AbstractClient {
 				
 
 				if(message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("setMulticastConsumer")){
-					System.out.println("setMulticastConsumer command processed");
+					String[] tempName=messageText.split("multicast");
+					System.out.println("You will be multicast by "+ tempName[0]);
 					setTopicConsumer(messageText);
 					return;
 				}
 
 				if (message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("failtosetmulticast")){
 					System.out.println("Username Parameters not valid! Please reenter your command, this command will do nothing");
+					return;
+				}
+				
+				if (message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("removemulticastconsumer")){
+					TextMessage temp=((TextMessage) message);
+					String arg=temp.getText();
+					//System.out.println("recieved "+message.getJMSCorrelationID()+" and to pass"+arg);// for test
+					removeTopicConsumer(arg);
+					
+					String[] tempName=arg.split(".multicast");
+					System.out.println(tempName[0]+" just cancelled multicasting to you");
 					return;
 				}
 
