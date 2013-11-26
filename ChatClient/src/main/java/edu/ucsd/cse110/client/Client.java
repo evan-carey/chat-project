@@ -39,7 +39,7 @@ public class Client extends AbstractClient {
 
 		try {
 			// broadcastTopic = this.session.createTopic("server.broadcast");
-			TextMessage tm = session.createTextMessage("-a " + username);
+			TextMessage tm = session.createTextMessage(" ");
 			tm.setJMSCorrelationID(username);
 			tm.setJMSReplyTo(consumerQueue);
 			producer.send(tm);
@@ -70,7 +70,10 @@ public class Client extends AbstractClient {
 					new EnterChatRoom(username);
 				
 				} else if ("cancel broadcast".equalsIgnoreCase(message)) {
-					if(broadcastFlag) setProducer(producerQueue);
+					if(broadcastFlag){
+						setProducer(producerQueue);
+						broadcastFlag = false; 
+					}
 				
 				} else if ("cancel multicast".equalsIgnoreCase(message)) {
 					if(multicastFlag) {
@@ -82,13 +85,16 @@ public class Client extends AbstractClient {
 						txtMessage.setJMSReplyTo(consumerQueue);
 						txtMessage.setJMSDestination(producerQueue);
 						this.producer.send(txtMessage);
+						multicastFlag = false;
 					}
 				} else if (message.equals("disconnect")) {
 					TextMessage txtMessage = session.createTextMessage();
 					txtMessage.setText("disconnect");
+					//txtMessage.setJMSReplyTo(message.get);
 					this.producer.send(txtMessage);
 					// txtMessage.setJMSCorrelationID("disconnect");
 					// txtMessage.setJMSReplyTo(consumerQueue);
+					privateChat = false;
 					setProducer(producerQueue);
 
 					/*
@@ -218,6 +224,7 @@ public class Client extends AbstractClient {
 					privateObject = message.getJMSCorrelationID();
 				} else if (messageText.equals("disconnect")) {
 					privateChat = false;
+					
 					setProducer(producerQueue);
 				} else if (messageText.equals("setbroadcast")) {
 					setTopicProducer("publicBroadcast");

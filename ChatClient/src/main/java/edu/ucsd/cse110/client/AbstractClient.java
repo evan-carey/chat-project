@@ -163,8 +163,8 @@ public abstract class AbstractClient implements MessageListener {
 					System.out.print("Logging off...");
 					try {
 						client.producer.close();
-						client.session.close();
-						client.connection.close();
+						//client.session.close();
+						//client.connection.close();
 					} catch (JMSException e) {
 						e.printStackTrace();
 					}

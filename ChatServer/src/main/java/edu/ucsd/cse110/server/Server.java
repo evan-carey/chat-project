@@ -32,7 +32,7 @@ public class Server implements MessageListener {
 	private ServerRunChatRoom serverrunchatroom;
 	/** User accounts */
 	private Accounts accounts;
-	private HashMap<String, String> onlineUsers; // map of online users
+	//private HashMap<String, String> onlineUsers; // map of online users
 	private Map<String, Destination> loggedOn; // map of online users and their Destinations
 	
 	private HashMap<String,Set<String>> multicastContainer=new HashMap<String,Set<String>>();
@@ -43,7 +43,7 @@ public class Server implements MessageListener {
 	
 	public Server() {
 		accounts = new Accounts();
-		onlineUsers = new HashMap<String, String>();
+		//onlineUsers = new HashMap<String, String>();
 		loggedOn = new HashMap<String, Destination>();
 		try {
 			BrokerService broker = new BrokerService();
@@ -106,19 +106,19 @@ public class Server implements MessageListener {
 		String[] temp = user.split(" ");
 		user = temp[1];
 
-		this.onlineUsers.put(user, clientID);
+		//this.onlineUsers.put(user, clientID);
 		System.out.println("User: " + user + " at client: " + clientID);
 	}
 
 	private void reportOnlineUsers(Destination dest) throws JMSException {
-		if(onlineUsers.isEmpty()){
+		if(loggedOn.isEmpty()){
 			TextMessage tm = this.session.createTextMessage();
 			tm.setText("No users found");
 			this.replyProducer.send(dest, tm);
 		}
 		String users = "\nOnline Users: \n";
 
-		for (String s : onlineUsers.keySet()) {
+		for (String s : loggedOn.keySet()) {
 			users += "    " + s + "\n";
 		}
 
@@ -131,11 +131,12 @@ public class Server implements MessageListener {
 	private void handleMessage(Message tmp) throws JMSException {
         TextMessage tm = (TextMessage) tmp;
 		String text = tm.getText();
-
+        //if()
 		switch (text.charAt(1)) {
-		case 'a':
-			addUserOnline(tm);
-			break;
+		//case 'a':
+			
+			//addUserOnline(tm);
+			//break;
 		case 'g':
 			reportOnlineUsers(tmp.getJMSReplyTo());
 			break;
@@ -164,7 +165,7 @@ public class Server implements MessageListener {
 		parseSize=commandParse.length;
 		boolean multicastInValid=false;
 		for(int i=1;i<parseSize;i++){
-			if(!onlineUsers.containsKey(commandParse[i])) multicastInValid=true;
+			if(!loggedOn.containsKey(commandParse[i])) multicastInValid=true;
 		}
 		if (multicastInValid) {
 			TextMessage tm = null;
@@ -412,7 +413,7 @@ public class Server implements MessageListener {
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
-		onlineUsers.remove(msg[0]);
+		//onlineUsers.remove(msg[0]);
 		loggedOn.remove(msg[0]);
 		return;
 	}
@@ -551,9 +552,9 @@ public class Server implements MessageListener {
 					System.out.println("map users: " + loggedOn.size());
 				}
 				
-				if (!onlineUsers.containsKey(user) && user != null) {
-					addUserOnline(txtMsg);
-				}
+				//if (!onlineUsers.containsKey(user) && user != null) {
+				//	addUserOnline(txtMsg);
+				//}
 				
 				if (messageText.contains("-chat")) {
 					handleMessage(message);
