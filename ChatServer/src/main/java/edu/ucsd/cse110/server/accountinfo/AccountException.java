@@ -1,3 +1,4 @@
+
 package edu.ucsd.cse110.server.accountinfo;
 
 public class AccountException extends Exception {
