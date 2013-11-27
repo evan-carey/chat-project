@@ -1,5 +1,6 @@
 package edu.ucsd.cse110.client;
 
+import java.util.Random;
 import java.util.Scanner;
 
 import javax.jms.Connection;
@@ -19,8 +20,11 @@ public class ConnectingClient implements MessageListener {
 
 	private Connection connection;
 	private Session session;
-	private Destination loginQueue;
+	private Destination producerQueue;
+	private Destination consumerQueue;
 	private MessageProducer producer;
+	
+	private String username, password;
 
 	public ConnectingClient() {
 		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
@@ -30,44 +34,63 @@ public class ConnectingClient implements MessageListener {
 			connection = connectionFactory.createConnection();
 			connection.start();
 			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-			loginQueue = session.createTemporaryQueue();
-			this.producer = session.createProducer(loginQueue);
+			getAccountInfo();
+			// set producer
+			producerQueue = session.createQueue("server.messages");
+			this.producer = session.createProducer(producerQueue);
 			this.producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			MessageConsumer responseConsumer = session.createConsumer(loginQueue);
+			
+			// set consumer
+			consumerQueue = session.createTemporaryQueue();
+			MessageConsumer responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
-			validate(loginQueue);
+			
+			verifyAccount();
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());
 		}
 	}
-
-	private void validate(Destination tempDest) {
+	
+	private void getAccountInfo() {
 		Scanner keyboard = new Scanner(System.in);
 		System.out.print("Enter username: ");
-		String username = keyboard.nextLine().trim();
+		this.username = keyboard.nextLine().trim();
 		System.out.print("Enter password: ");
-		String password = keyboard.nextLine().trim();
-
-		String account = username + " " + password;
-
-		try {
-			producer.send(session.createTextMessage(account),
-					DeliveryMode.NON_PERSISTENT, 9,
-					Message.DEFAULT_TIME_TO_LIVE);
-			System.out.println("Account info sent to server");
-		} catch (JMSException e) {
-			System.err.println(e.getMessage());
-		}
-		keyboard.close();
+		this.password = keyboard.nextLine().trim();
 
 	}
 
+	private void verifyAccount() {
+		try {
+			TextMessage txtMessage = session.createTextMessage();
+			txtMessage.setText(this.username + " " + this.password);
+			txtMessage.setJMSReplyTo(consumerQueue);
+			
+			String correlationId = "verifyAccount";
+			txtMessage.setJMSCorrelationID(correlationId);
+			this.producer.send(txtMessage);
+			//System.out.println("Connecting to server...");
+		} catch (JMSException e) {
+			System.err.println(e.getMessage());
+		}
+
+	}
+
+	private String createRandomString() {
+		Random random = new Random(System.currentTimeMillis());
+		long randomLong = random.nextLong();
+		return Long.toHexString(randomLong);
+	}
+	
 	public void onMessage(Message message) {
 		try {
 			if (((TextMessage) message).getText().equals("valid")) {
+				System.out.println("Account validated. Connecting to server.");
+				session.close();
 				connection.close();
-				new ExampleClient();
+				new ExampleClient(username);
 			} else {
+				System.out.println(((TextMessage) message).getText());
 				System.out.println("Invalid account. Terminating...");
 				System.exit(0);
 			}

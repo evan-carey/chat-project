@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.jms.Connection;
 import javax.jms.DeliveryMode;
@@ -18,33 +20,44 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
- 
+
+import edu.ucsd.cse110.server.accountinfo.AccountException;
+import edu.ucsd.cse110.server.accountinfo.Accounts;
+
 public class ExampleServer implements MessageListener {
+	//user accounts
+	private Accounts accounts;
 	private static final String USER_FILE = "src/main/java/edu/ucsd/cse110/server/accounts.txt";
 	
     private static int ackMode;
     //private static String messageQueueName;
     private static String messageBrokerUrl;
     private static String messageTopicName;
-    
+    private static String messageLogin;
     // server-to-client topic
     private static String produceTopicName;
- 
+    private Destination adminQueue;
+    private Destination produceQueue;
+    
     private Session session;
     private boolean transacted = false;
     private MessageProducer replyProducer;
     private MessageProtocol messageProtocol;
     
+    private Map<String, Destination> loggedOn;
     static {
         messageBrokerUrl = "tcp://localhost:61616";
         //messageQueueName = "client.messages";
         messageTopicName = "client.messages";
-        produceTopicName = "server.messages";
+       produceTopicName = "server.messages";
+        messageLogin = "client.login";
         ackMode = Session.AUTO_ACKNOWLEDGE;
     }
  
     public ExampleServer() {
         try {
+        	accounts = new Accounts();
+        	loggedOn = new HashMap<String, Destination>();
             //This message broker is embedded
             BrokerService broker = new BrokerService();
             broker.setPersistent(false);
@@ -60,7 +73,8 @@ public class ExampleServer implements MessageListener {
         this.messageProtocol = new MessageProtocol();
         this.setupMessageQueueConsumer();
     }
- 
+    
+    
     private void setupMessageQueueConsumer() {
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(messageBrokerUrl);
         Connection connection;
@@ -68,42 +82,105 @@ public class ExampleServer implements MessageListener {
             connection = connectionFactory.createConnection();
             connection.start();
             this.session = connection.createSession(this.transacted, ackMode);
-            Destination adminQueue = this.session.createTopic(messageTopicName);
+            suscribe(session);
+            
             
             // set server-to-client topic
-            Destination produceTopic = this.session.createTopic(produceTopicName);
+            produceQueue = this.session.createQueue(produceTopicName);
  
             //Setup a message producer to respond to messages from clients, we will get the destination
             //to send to from the JMSReplyTo header field from a Message
-            this.replyProducer = this.session.createProducer(produceTopic);
+            this.replyProducer = this.session.createProducer(null);
             this.replyProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
  
             //Set up a consumer to consume messages off of the admin queue
-            MessageConsumer consumer = this.session.createConsumer(adminQueue);
+            MessageConsumer consumer = this.session.createConsumer(produceQueue);
             consumer.setMessageListener(this);
         } catch (JMSException e) {
             //Handle the exception appropriately
         }
     }
- 
+    
+    private void suscribe(Session session) throws JMSException{
+    	adminQueue = this.session.createTopic(messageTopicName);
+    }
+    //private boolean signedIn = false;
     public void onMessage(Message message) {
-    	
-        System.out.println("Message received by server");
+    	Destination userDest;
+    	boolean f = false;
+        //System.out.println("Message received by server");
     	try {
-			if( message.getJMSPriority() == 9) {
+    		
+    		if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("verifyAccount")) {
+				TextMessage response = this.session.createTextMessage();
+				response.setJMSCorrelationID(message.getJMSCorrelationID());
+				String[] account = ((TextMessage)message).getText().split(" ");
+				String username = account[0];
+				String password = account[1];
+				String responseText = validate(username, password);
+				response.setText(responseText);
+				MessageProducer tempProducer = this.session.createProducer(message.getJMSReplyTo());
+				tempProducer.send(message.getJMSReplyTo(), response);
+				tempProducer.close();
+				return;
+			}
+    		
+    		
+    		//respond message
+    		TextMessage response = this.session.createTextMessage();
+    		TextMessage response2 = this.session.createTextMessage();
+            if (message instanceof TextMessage) {
+                TextMessage txtMsg = (TextMessage) message;
+                String messageText = txtMsg.getText();
+                String user = txtMsg.getJMSCorrelationID();
+               
+                //if user is not logged on, add it to the Map of logged on users
+                if(!loggedOn.containsKey(user)){
+                	userDest = message.getJMSReplyTo();
+                	loggedOn.put(user, userDest);
+                	System.out.println("map users: " + loggedOn.size());
+                }
+                if(messageText.equals("[testname]: chat")){
+                	
+                	response.setText("connect");
+                	response.setJMSReplyTo(loggedOn.get("u"));
+                	//this.replyProducer.send(message.getJMSReplyTo(),response);
+                	System.out.println("connecting "+ user + " to u");
+                	response2.setText("suscribe");
+                	response2.setJMSReplyTo(message.getJMSReplyTo());
+                	f = true;
+                }
+                
+                
+                else{
+                 System.out.println(messageText);
+                 response.setText(this.messageProtocol.handleProtocolMessage(messageText));
+                 }
+            //response.setJMSCorrelationID(message.getJMSCorrelationID());
+			/*if( message.getJMSPriority() == 9) {
 				if (validate(((TextMessage) message).getText())) {
 					this.replyProducer.send(session.createTextMessage("valid"), DeliveryMode.NON_PERSISTENT, 9, Message.DEFAULT_TIME_TO_LIVE);
-					return;
+					//signedIn = true;
 				} else {
 					this.replyProducer.send(session.createTextMessage("invalid"), DeliveryMode.NON_PERSISTENT, 9, Message.DEFAULT_TIME_TO_LIVE);
 					return;
-				}
-			}
+				}*/
+            this.replyProducer.send(message.getJMSReplyTo(),response);
+            System.out.println("server reply to"+message.getJMSReplyTo().toString()
+            		+ " change suscription" + response.getJMSReplyTo());
+            
+             
+            if(f){
+            this.replyProducer.send(loggedOn.get("u"), response2);
+            System.out.println("destination back to u"+loggedOn.get("u").toString()
+            		+ "set suscribe to temp" + response2.getJMSReplyTo());
+            }
+            }
 		} catch (JMSException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-    	
+    	/*if(signedIn){ //comment this out to have regular functionality
     	try {
             TextMessage response = this.session.createTextMessage();
             if (message instanceof TextMessage) {
@@ -124,29 +201,22 @@ public class ExampleServer implements MessageListener {
         } catch (JMSException e) {
             //Handle the exception appropriately
         }
+    	}*/
     }
     
-    public boolean validate(String account) {
-    	BufferedReader reader = null;
-		try {
-			reader = new BufferedReader(new FileReader(USER_FILE));
-			String line;
-			while ((line = reader.readLine()) != null) {
-				if (line.equalsIgnoreCase(account)) {
-					reader.close();
-					System.out.println("Account validated");
-					return true;
-				}
-			}
-			System.out.println("Invalid username/password combination");
-			reader.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return false;
+    public String validate(String username, String password) {
+    	// check if username is in database
+    	if (!accounts.hasUsername(username))
+    		return "Account does not exist.";
+    	// if it does, verify the password
+    	try {
+    		if (password.equals(accounts.getPassword(username)))
+    			return "valid";
+    		else
+    			return "Invalid username/password combination.";
+    	} catch (AccountException e) {
+    		return e.getMessage();
+    	}
     }
     
 //    public boolean validatePassword(String password) {
