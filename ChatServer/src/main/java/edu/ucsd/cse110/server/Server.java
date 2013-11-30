@@ -41,6 +41,7 @@ public class Server implements MessageListener {
 	private String[] commandParse = null;
 	private int parseSize;
 	
+	
 	public Server() {
 		accounts = new Accounts();
 		//onlineUsers = new HashMap<String, String>();
@@ -53,7 +54,7 @@ public class Server implements MessageListener {
 			broker.start();
 			serverrunchatroom = new ServerRunChatRoom();
 		} catch (Exception e) {
-			System.err.println("Unable to initilize the server.");
+			System.err.println("Unable to initialize the server.");
 		}
 
 		// Delegating the handling of messages to another class, instantiate it

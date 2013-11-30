@@ -1,5 +1,8 @@
 package edu.ucsd.cse110.server.accountinfo;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Before;
@@ -15,28 +18,77 @@ public class AccountsTest {
 	}
 
 	@Test
-	public void testAccounts() {
-		fail("Not yet implemented");
-	}
-
-	@Test
 	public void testSetPassword() {
-		fail("Not yet implemented");
+		String newPass = "newpass";
+		
+		// valid
+		try {
+			accounts.setPassword("testname", "testpass", newPass);
+			assertEquals(newPass, accounts.getPassword("testname"));
+		} catch (AccountException e) {
+			fail();
+		}
+		
+		// invalid username
+		try {
+			accounts.setPassword("madeupname", "", "blahblahblah");
+			fail();
+		} catch (AccountException e) {
+			// pass
+		}
+		
+		// invalid password
+		try {
+			accounts.setPassword("testname", "incorrectPass", newPass);
+			fail();
+		} catch (AccountException e) {
+			// pass
+		}
+		// ensure password hasn't been changed
+		try {
+			assertEquals(newPass, accounts.getPassword("testname"));
+		} catch (AccountException e1) {
+			fail();
+		}
 	}
 
 	@Test
 	public void testGetPassword() {
-		fail("Not yet implemented");
+		try {
+			assertEquals("testpass", accounts.getPassword("testname"));
+		} catch (AccountException e) {
+			fail();
+		}
+		try {
+			accounts.getPassword("someMadeUpName");
+			fail();
+		} catch (AccountException e) {
+			// pass
+		}
 	}
 
 	@Test
 	public void testAddAccount() {
-		fail("Not yet implemented");
+		// valid
+		try {
+			accounts.addAccount("newUser", "newPass");
+		} catch (AccountException e) {
+			// pass
+		}
+		
+		// invalid (account already exists)
+		try {
+			accounts.addAccount("newUser", "password");
+			fail();
+		} catch (AccountException e) {
+			// pass
+		}
 	}
 
 	@Test
 	public void testHasUsername() {
-		fail("Not yet implemented");
+		assertTrue(accounts.hasUsername("testname"));
+		assertFalse(accounts.hasUsername("testpass"));
 	}
 
 }

@@ -75,6 +75,8 @@ public class Accounts {
 	 * @throws AccountException if username is already in database
 	 */
 	public void addAccount(String username, String password) throws AccountException {
+		if (username == null || username == "" || password == null || password == "")
+			throw new AccountException("Invalid username and/or password");
 		if (accounts.containsKey(username))
 			throw new AccountException("Username unavailable");
 		accounts.put(username, password);
