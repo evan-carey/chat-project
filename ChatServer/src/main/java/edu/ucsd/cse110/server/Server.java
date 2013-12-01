@@ -641,11 +641,18 @@ public class Server implements MessageListener {
 	}
 
 	private void setChat(Message message) throws JMSException {
+		
 		TextMessage tmp = (TextMessage) message;
 		String[] msg = tmp.getText().split(" ");
+		
+		
+		if(msg.length < 2){
+			TextMessage systemResponse=this.session.createTextMessage();
+			systemResponse.setText("Sent from Server: Invalid Input. Please try again.");
+			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
+			return;
+		}
 		String user2 = msg[1];
-		
-		
 		if(!loggedOn.containsKey(user2)){
 			TextMessage systemResponse=this.session.createTextMessage();
 			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is a logged on user. This command will do nothing");
