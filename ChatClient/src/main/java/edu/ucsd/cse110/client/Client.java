@@ -26,10 +26,12 @@ public class Client extends AbstractClient {
 	private boolean multicastFlag = false;
 	private boolean privateChat = false;
 	private String privateObject;
+	private EnterChatRoom initialChatRoom;
 
-	public Client(String username) {
+	public Client(String username) throws JMSException {
 		super();
 		setUsername(username);
+		initialChatRoom = new EnterChatRoom(username);
 		multicastTopic = username + ".multicast";
 		System.out.println(">>>>>>>>>>>>>>" + username);
 		enterServer();
@@ -65,9 +67,11 @@ public class Client extends AbstractClient {
 
 				} else if ("whereami".equalsIgnoreCase(message)) {
 					whereAmI();
+				} else if ("c:LISTROOMS".equalsIgnoreCase(message)) {
+					initialChatRoom.listChatRoom();
 
-				} else if ("Command:enterchatroom".equalsIgnoreCase(message)) {
-					new EnterChatRoom(username);
+				} else if ("C:enterroom".equalsIgnoreCase(message)) {
+					initialChatRoom.EnterChatRoomNow();
 				
 				} else if ("cancel broadcast".equalsIgnoreCase(message)) {
 					if(broadcastFlag){

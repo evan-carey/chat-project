@@ -50,19 +50,34 @@ public class EnterChatRoom implements MessageListener {
 			consumerQueue = session.createTemporaryTopic();
 			responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
-			System.out.println("You are attemping to enter a chatroom....");
-			System.out.println("Current chatrooms are:");
-			System.out.println("Please enter the name of the chatroom you want to join in");
-			commandChatRoom("listchatroom");
-			selectChatRoom();
+			//System.out.println("You are attemping to enter a chatroom....");
+			//System.out.println("Current chatrooms are:");
+			//System.out.println("Please enter the name of the chatroom you want to join in");
+			//commandChatRoom("listchatroom");
+			//selectChatRoom();
 			// responseConsumer.close(); //unsubscribe from the temporary topic
 			// used to transmit chatroomlist
-			inChatRoom();
+			//inChatRoom();
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
 	}
 
+	
+	public void EnterChatRoomNow() throws JMSException{
+
+		System.out.println("You are attemping to enter a chatroom....");
+		System.out.println("Current chatrooms are:");
+		System.out.println("Please enter the name of the chatroom you want to join in");
+		commandChatRoom("listchatroom");
+		selectChatRoom();
+		// responseConsumer.close(); //unsubscribe from the temporary topic
+		// used to transmit chatroomlist
+		inChatRoom();
+		
+	}
+	
+	
 	public void onMessage(Message message) {
 		try {
 			ChatRoomStringList = ((TextMessage) message).getText().split(" ");
@@ -132,21 +147,17 @@ public class EnterChatRoom implements MessageListener {
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
 
-				if ("Command:LISTCHATROOM".equalsIgnoreCase(message)) {
-
-					System.out.println("The current chatroom list");
-					commandChatRoom("listchatroom");
+				if ("C:LISTROOMS".equalsIgnoreCase(message)) {
+					listChatRoom();
 					continue;
 				}
 
-				if ("Command:LISTCHATROOMUSERS".equalsIgnoreCase(message)) {
-
-					System.out.println("The current chatroom userlist is:");
-					txtSender(username + " " + currentChatRoom, "listchatroomusers");
+				if ("C:LISTUSERS".equalsIgnoreCase(message)) {
+					listChatRoomUsers();
 					continue;
 				}
 
-				if ("Command:CREATECHATROOM".equalsIgnoreCase(message)) {
+				if ("C:CREATE".equalsIgnoreCase(message)) {
 					System.out.println("Please enter the name of the chatroom you want to create.");
 					System.out.print(">>");
 					String chatroomname = keyboard.nextLine();
@@ -154,14 +165,14 @@ public class EnterChatRoom implements MessageListener {
 					continue;
 				}
 
-				if ("Command:quitchatroom".equalsIgnoreCase(message)) {
+				if ("C:quit".equalsIgnoreCase(message)) {
 					System.out.println("Client quit current chatroom, return to default interface");
 					txtSender(username + " " + currentChatRoom, "chatroomlogout");
 					connection.close();
 					return;
 				}
 
-				if ("Command:whereami".equalsIgnoreCase(message)) {
+				if ("whereami".equalsIgnoreCase(message)) {
 					
 					System.out.println("You are in the ChatRoom:"
 							+ currentChatRoom);
@@ -181,6 +192,30 @@ public class EnterChatRoom implements MessageListener {
 		}
 
 	}
+	
+	
+	public boolean listChatRoom() throws JMSException{
+		try{
+			System.out.println("The current chatroom list");
+			commandChatRoom("listchatroom");
+			return true;
+		}catch(JMSException e){
+			System.err.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public boolean listChatRoomUsers() throws JMSException{
+		try{
+			System.out.println("The current chatroom userlist is:");
+			txtSender(username + " " + currentChatRoom, "listchatroomusers");
+			return true;
+		}catch(JMSException e){
+			System.err.println(e.getMessage());
+		}
+		return false;
+	}
+	
 
 	public void txtSender(String content, String correlationid) throws JMSException {
 		TextMessage txtMessage = session.createTextMessage();
