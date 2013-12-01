@@ -11,11 +11,11 @@ import javax.jms.MessageProducer;
 import javax.jms.TextMessage;
 
 public class Client extends AbstractClient {
-
-	/** Username associated with the client */
+  
+	 /** Username associated with the client */
 	private String oldPass;
 	private String newPass;
-
+   
 	private MessageProducer accountProducer;
 
 	private Destination editQueueProduce;
@@ -64,15 +64,16 @@ public class Client extends AbstractClient {
 
 				} else if ("editAccount".equalsIgnoreCase(message)) {
 					editAccount();
-
 				} else if ("whereami".equalsIgnoreCase(message)) {
 					whereAmI();
-				} else if ("c:LISTROOMS".equalsIgnoreCase(message)) {
+				} else if ("c:listrooms".equalsIgnoreCase(message)) {
 					initialChatRoom.listChatRoom();
-
-				} else if ("C:enterroom".equalsIgnoreCase(message)) {
+				} else if ("c:enterroom".equalsIgnoreCase(message)) {
 					initialChatRoom.EnterChatRoomNow();
-				
+				} else if ("c:create".equalsIgnoreCase(message)) {
+					initialChatRoom.createChatRoom();
+				} else if ("c:help".equalsIgnoreCase(message)) {
+					listServerCommands();   
 				} else if ("cancel broadcast".equalsIgnoreCase(message)) {
 					if(broadcastFlag){
 						setProducer(producerQueue);
@@ -248,6 +249,41 @@ public class Client extends AbstractClient {
 		}
 
 	}
+	
+	
+	public static void listServerCommands(){
+		System.out.println("**********SERVER COMMANDS************");
+		System.out.println("-c [username]");
+		System.out.println("   Establishes a private chat between current user"
+				+ "and designated username.");
+		System.out.println("-g");
+		System.out.println("   Returns all online users.");
+		System.out.println("-b");
+		System.out.println("   Sets broadcast mode.");
+		System.out.println("cancel broadcast");
+		System.out.println("   Cancels broadcast mode and returns user to server.");
+		System.out.println("-m [username1] [username2] ...");
+		System.out.println("   Sets multicast mode.");
+		System.out.println("cancel multicast");
+		System.out.println("   Cancels multicast mode and returns user to server.");
+		System.out.println("whereami");
+		System.out.println("   Displays the users current status.");
+		System.out.println("c:enterroom");
+		System.out.println("   Allows the user to enter existing chatroom.");
+		System.out.println("c:listroom");
+		System.out.println("   Lists all the existing chatrooms.");
+		System.out.println("c:create");
+		System.out.println("   Allows the user to create a room, provided it "
+				+ "doesn't alreay exist");
+		System.out.println("editAccount");
+		System.out.println("   Allows the user to edit his/her account.");			
+		System.out.println("logoff");
+		System.out.println("  Logs the user off, saving any/all changes "
+				+ "made to their account.");
+		System.out.println("**************************");
+		
+	}
+	
 
 	public static void main(String[] args) {
 		/*
