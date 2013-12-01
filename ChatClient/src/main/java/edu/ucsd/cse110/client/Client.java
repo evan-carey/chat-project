@@ -91,15 +91,17 @@ public class Client extends AbstractClient {
 						this.producer.send(txtMessage);
 						multicastFlag = false;
 					}
-				} else if (message.equals("disconnect")) {
+				} else if (message.equals("-d")) {
 					TextMessage txtMessage = session.createTextMessage();
-					txtMessage.setText("disconnect");
+					txtMessage.setJMSCorrelationID(username);
+					txtMessage.setText("-d");
 					//txtMessage.setJMSReplyTo(message.get);
 					this.producer.send(txtMessage);
-					// txtMessage.setJMSCorrelationID("disconnect");
 					// txtMessage.setJMSReplyTo(consumerQueue);
 					privateChat = false;
 					setProducer(producerQueue);
+					txtMessage.setText("-d");
+					this.producer.send(txtMessage);
 
 					/*
 					 * } else if(message.equals("setbroadcast")){
@@ -226,10 +228,13 @@ public class Client extends AbstractClient {
 					privateChat = true;
 					setProducer(message.getJMSReplyTo());
 					privateObject = message.getJMSCorrelationID();
-				} else if (messageText.equals("disconnect")) {
+				} else if (messageText.equals("-d")) {
 					privateChat = false;
-					
 					setProducer(producerQueue);
+					TextMessage txtMessage = session.createTextMessage();
+					txtMessage.setJMSCorrelationID(username);
+					txtMessage.setText("-d");
+					this.producer.send(txtMessage);
 				} else if (messageText.equals("setbroadcast")) {
 					setTopicProducer("publicBroadcast");
 					broadcastFlag = true;
