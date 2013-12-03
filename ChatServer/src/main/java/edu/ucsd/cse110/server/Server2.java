@@ -5,6 +5,7 @@ package edu.ucsd.cse110.server;
  * nice with it. Doesn't work yet.
  * @author Evan Carey
  */
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -42,15 +43,13 @@ import edu.ucsd.cse110.server.accountinfo.Accounts;
 public class Server2 {
 
 	private static JmsTemplate jmsTemplate;
-	//private static JmsResourceHolder resourceHolder;
 	private MessageProducer producer;
 
 	private Destination adminQueue, adminQueue_2;
 
 	private ServerRunChatRoom serverrunchatroom;
 	private Accounts accounts;
-	private Map<String, Destination> loggedOn; // map of online users and their
-												// Destinations
+	private Map<String, Destination> loggedOn; // online users
 	
 	private HashMap<String,String[]> multicastContainer=new HashMap<String,String[]>();
 	private Set<String> privateChatContainer=new HashSet<String>();
@@ -60,7 +59,6 @@ public class Server2 {
 		accounts = new Accounts();
 		loggedOn = new HashMap<String, Destination>();
 		ShutdownHook.attachShutdownHook(this);
-		//resourceHolder.addSession(new Session());
 		try {
 			serverrunchatroom = new ServerRunChatRoom();
 			setupMessageQueueConsumer();
@@ -363,7 +361,7 @@ public class Server2 {
 		multicastContainer.remove(tempTopicName);
 	}	
 	
-	public void receive(Message msg) throws JMSException {
+	public void onMessage(final TextMessage msg) throws JMSException {
 		final String text = ((TextMessage) msg).getText();
 		if (text.length() <= 0) return;
 		
@@ -393,7 +391,7 @@ public class Server2 {
 			public Message createMessage(Session session) throws JMSException {
 				TextMessage message1 = session.createTextMessage();
 				message1.setText(text);
-				message1.setJMSCorrelationID("removemulticastconsumer");
+				message1.setJMSCorrelationID(msg.getJMSCorrelationID());
 				return message1;
 			}
 		};
@@ -417,7 +415,8 @@ public class Server2 {
 	MessageListenerAdapter receiver() {
 		return new MessageListenerAdapter(new Server2()) {
 			{
-				setDefaultListenerMethod("receive");
+				setMessageConverter(null);
+				setDefaultListenerMethod("onMessage");
 			}
 		};
 	}
@@ -472,17 +471,17 @@ public class Server2 {
 			AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Server2.class);
 
 			jmsTemplate = context.getBean(JmsTemplate.class);
-			//resourceHolder = context.getBean(JmsResourceHolder.class);
 
-//			MessageCreator messageCreator = new MessageCreator() {
-//				public Message createMessage(Session session)
-//						throws JMSException {
-//					return session.createTextMessage("Server Initialized!");
-//				}
-//			};
-			System.out.println("Sending a new message:");
-			//jmsTemplate.send(ServerConstants.produceTopicName, messageCreator);
-
+			// Gracefully terminate server by hitting ENTER
+			System.out.println("Server initialized. To terminate, press ENTER in the console.");
+			try {
+				System.in.read();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			System.out.println("Terminating server.");
+			System.exit(0);
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println("Fatal error, aborting...");
