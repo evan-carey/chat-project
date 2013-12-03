@@ -74,7 +74,7 @@ public class Server2 {
 		//adminQueue_2 = resourceHolder.getSession().createQueue("templistchatroomqueue");
 		// producer = jmsTemplate.createProducer(resourceHolder.getSession(),adminQueue);
 	}
-
+	
 	private void handleDashCommand(Message tmp) throws JMSException {
 		String text = ((TextMessage) tmp).getText();
 
@@ -361,8 +361,7 @@ public class Server2 {
 //			jmsTemplate.convertAndSend(multidest, tm);
 		}
 		multicastContainer.remove(tempTopicName);
-	}
-	
+	}	
 	
 	public void receive(Message msg) throws JMSException {
 		final String text = ((TextMessage) msg).getText();
@@ -431,8 +430,7 @@ public class Server2 {
 			{
 				setMessageListener(messageListener);
 				setConnectionFactory(connectionFactory);
-				//setDestinationName(ServerConstants.messageTopicName);
-				setDestinationName(ServerConstants.publicBroadcast);
+				setDestinationName(ServerConstants.produceTopicName);
 			}
 		};
 	}
@@ -441,11 +439,6 @@ public class Server2 {
 	JmsTemplate jmsTemplate(ConnectionFactory connectionFactory) {
 		return new JmsTemplate(connectionFactory);
 	}
-
-//	@Bean
-//	JmsResourceHolder jmsResourceHolder(ConnectionFactory connectionFactory, Connection connection, Session session) {
-//		return new JmsResourceHolder(connectionFactory, connection, session);
-//	}
 
 	/**
 	 * Shutdown Hook class to handle saving account information when program
@@ -481,14 +474,14 @@ public class Server2 {
 			jmsTemplate = context.getBean(JmsTemplate.class);
 			//resourceHolder = context.getBean(JmsResourceHolder.class);
 
-			MessageCreator messageCreator = new MessageCreator() {
-				public Message createMessage(Session session)
-						throws JMSException {
-					return session.createTextMessage("Server Initialized!");
-				}
-			};
+//			MessageCreator messageCreator = new MessageCreator() {
+//				public Message createMessage(Session session)
+//						throws JMSException {
+//					return session.createTextMessage("Server Initialized!");
+//				}
+//			};
 			System.out.println("Sending a new message:");
-			jmsTemplate.send(ServerConstants.produceTopicName, messageCreator);
+			//jmsTemplate.send(ServerConstants.produceTopicName, messageCreator);
 
 		} catch (Exception e) {
 			e.printStackTrace();
