@@ -42,7 +42,7 @@ import edu.ucsd.cse110.server.accountinfo.Accounts;
 public class Server2 {
 
 	private static JmsTemplate jmsTemplate;
-	private static JmsResourceHolder resourceHolder;
+	//private static JmsResourceHolder resourceHolder;
 	private MessageProducer producer;
 
 	private Destination adminQueue, adminQueue_2;
@@ -70,8 +70,8 @@ public class Server2 {
 	}
 
 	private void setupMessageQueueConsumer() throws JMSException {
-		adminQueue = resourceHolder.getSession().createQueue(ServerConstants.produceTopicName);
-		adminQueue_2 = resourceHolder.getSession().createQueue("templistchatroomqueue");
+		//adminQueue = resourceHolder.getSession().createQueue(ServerConstants.produceTopicName);
+		//adminQueue_2 = resourceHolder.getSession().createQueue("templistchatroomqueue");
 		// producer = jmsTemplate.createProducer(resourceHolder.getSession(),adminQueue);
 	}
 
@@ -111,10 +111,10 @@ public class Server2 {
 		jmsTemplate.convertAndSend(dest, users);
 	}
 	
-	private void setChat(Message message) throws JMSException {
+	private void setChat(final Message message) throws JMSException {
 		String[] msg = ((TextMessage) message).getText().split(" ");
 		if (msg.length < 2) return;
-		String user2 = msg[1];
+		final String user2 = msg[1];
 		
 		// private chat errors
 		if (!loggedOn.containsKey(user2)) {
@@ -135,19 +135,43 @@ public class Server2 {
 		privateChatContainer.add(message.getJMSCorrelationID());
 		privateChatContainer.add(user2);
 		
+		// send response to user1
+		MessageCreator mc1 = new MessageCreator() {
+			public Message createMessage(Session session) throws JMSException {
+				TextMessage message1 = session.createTextMessage();
+				message1.setText("connect");
+				message1.setJMSCorrelationID(user2);
+				message1.setJMSReplyTo(loggedOn.get(user2));
+				return message1;
+			}
+		};
+		jmsTemplate.send(message.getJMSReplyTo(), mc1);
+		
 		// set new Destination for user1 and send response
-		TextMessage tm1 = resourceHolder.getSession().createTextMessage();
-		tm1.setJMSCorrelationID(user2);
-		tm1.setText("connect");
-		tm1.setJMSReplyTo(loggedOn.get(user2));
-		jmsTemplate.convertAndSend(message.getJMSReplyTo(), tm1);
+//		TextMessage tm1 = resourceHolder.getSession().createTextMessage();
+//		tm1.setJMSCorrelationID(user2);
+//		tm1.setText("connect");
+//		tm1.setJMSReplyTo(loggedOn.get(user2));
+//		jmsTemplate.convertAndSend(message.getJMSReplyTo(), tm1);
+		
+		// send responses to user2
+		MessageCreator mc2 = new MessageCreator() {
+			public Message createMessage(Session session) throws JMSException {
+				TextMessage message2 = session.createTextMessage();
+				message2.setText("connect");
+				message2.setJMSCorrelationID(message.getJMSCorrelationID());
+				message2.setJMSReplyTo(message.getJMSReplyTo());
+				return message2;
+			}
+		};
+		jmsTemplate.send(loggedOn.get(user2), mc2);
 		
 		// set new Destination for user2 and send response
-		TextMessage tm2 = resourceHolder.getSession().createTextMessage();
-		tm2.setJMSCorrelationID(message.getJMSCorrelationID());
-		tm2.setText("connect");
-		tm2.setJMSReplyTo(message.getJMSReplyTo());
-		jmsTemplate.convertAndSend(loggedOn.get(user2), tm2);
+//		TextMessage tm2 = resourceHolder.getSession().createTextMessage();
+//		tm2.setJMSCorrelationID(message.getJMSCorrelationID());
+//		tm2.setText("connect");
+//		tm2.setJMSReplyTo(message.getJMSReplyTo());
+//		jmsTemplate.convertAndSend(loggedOn.get(user2), tm2);
 	}
 	
 	private void setBroadcast(Destination dest) {
@@ -168,16 +192,26 @@ public class Server2 {
 		}
 		// reply to sender
 		jmsTemplate.convertAndSend(tmp.getJMSReplyTo(), "setmulticast");
-		String multicastTopic = tmp.getJMSCorrelationID() + ".multicast";
+		final String multicastTopic = tmp.getJMSCorrelationID() + ".multicast";
 		
 		// reply to recipients
 		Iterator<Entry<String, Destination>> it = recipients.entrySet().iterator();
 		while(it.hasNext()) {
 			Map.Entry<String, Destination> recipient = it.next();
-			TextMessage tm = resourceHolder.getSession().createTextMessage();
-			tm.setJMSCorrelationID("setMulticastConsumer");
-			tm.setText(multicastTopic);
-			jmsTemplate.convertAndSend(recipient.getValue(), tm);
+			MessageCreator mc = new MessageCreator() {
+				public Message createMessage(Session session) throws JMSException {
+					TextMessage message1 = session.createTextMessage();
+					message1.setText(multicastTopic);
+					message1.setJMSCorrelationID("setMulticastConsumer");
+					return message1;
+				}
+			};
+			jmsTemplate.send(recipient.getValue(), mc);
+			
+//			TextMessage tm = resourceHolder.getSession().createTextMessage();
+//			tm.setJMSCorrelationID("setMulticastConsumer");
+//			tm.setText(multicastTopic);
+//			jmsTemplate.convertAndSend(recipient.getValue(), tm);
 		}
 		
 		multicastContainer.put(multicastTopic,users);
@@ -309,20 +343,29 @@ public class Server2 {
 	}
 	
 	private void cancelMulticast(Message msg) throws JMSException {
-		String tempTopicName = ((TextMessage) msg).getText();
+		final String tempTopicName = ((TextMessage) msg).getText();
 		for (String i : multicastContainer.get(tempTopicName)) {
 			Destination multidest = loggedOn.get(i);
-			TextMessage tm = resourceHolder.getSession().createTextMessage();
-			tm.setJMSCorrelationID("removemulticastconsumer");
-			tm.setText(tempTopicName);
-			jmsTemplate.convertAndSend(multidest, tm);
+			MessageCreator mc = new MessageCreator() {
+				public Message createMessage(Session session) throws JMSException {
+					TextMessage message1 = session.createTextMessage();
+					message1.setText(tempTopicName);
+					message1.setJMSCorrelationID("removemulticastconsumer");
+					return message1;
+				}
+			};
+			jmsTemplate.send(multidest, mc);
+//			TextMessage tm = resourceHolder.getSession().createTextMessage();
+//			tm.setJMSCorrelationID("removemulticastconsumer");
+//			tm.setText(tempTopicName);
+//			jmsTemplate.convertAndSend(multidest, tm);
 		}
 		multicastContainer.remove(tempTopicName);
 	}
 	
 	
 	public void receive(Message msg) throws JMSException {
-		String text = ((TextMessage) msg).getText();
+		final String text = ((TextMessage) msg).getText();
 		if (text.length() <= 0) return;
 		
 		// check for dash commands
@@ -347,11 +390,21 @@ public class Server2 {
 		}
 		
 		// Regular message handling
+		MessageCreator mc = new MessageCreator() {
+			public Message createMessage(Session session) throws JMSException {
+				TextMessage message1 = session.createTextMessage();
+				message1.setText(text);
+				message1.setJMSCorrelationID("removemulticastconsumer");
+				return message1;
+			}
+		};
+		jmsTemplate.send(msg.getJMSReplyTo(), mc);
+		
 		System.out.println(msg.getJMSCorrelationID()+" >> " + text);
-		TextMessage tm = resourceHolder.getSession().createTextMessage();
-		tm.setJMSCorrelationID(msg.getJMSCorrelationID());
-		tm.setText(text);
-		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), tm);
+//		TextMessage tm = resourceHolder.getSession().createTextMessage();
+//		tm.setJMSCorrelationID(msg.getJMSCorrelationID());
+//		tm.setText(text);
+//		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), tm);
 		
 	}
 
@@ -378,7 +431,8 @@ public class Server2 {
 			{
 				setMessageListener(messageListener);
 				setConnectionFactory(connectionFactory);
-				setDestinationName(ServerConstants.messageTopicName);
+				//setDestinationName(ServerConstants.messageTopicName);
+				setDestinationName(ServerConstants.publicBroadcast);
 			}
 		};
 	}
@@ -388,10 +442,10 @@ public class Server2 {
 		return new JmsTemplate(connectionFactory);
 	}
 
-	@Bean
-	JmsResourceHolder jmsResourceHolder(ConnectionFactory connectionFactory, Connection connection, Session session) {
-		return new JmsResourceHolder(connectionFactory, connection, session);
-	}
+//	@Bean
+//	JmsResourceHolder jmsResourceHolder(ConnectionFactory connectionFactory, Connection connection, Session session) {
+//		return new JmsResourceHolder(connectionFactory, connection, session);
+//	}
 
 	/**
 	 * Shutdown Hook class to handle saving account information when program
@@ -422,11 +476,10 @@ public class Server2 {
 			broker.addConnector(ServerConstants.messageBrokerUrl);
 			broker.setPersistent(false);
 			broker.start();
-			AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(
-					Server2.class);
+			AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Server2.class);
 
 			jmsTemplate = context.getBean(JmsTemplate.class);
-			resourceHolder = context.getBean(JmsResourceHolder.class);
+			//resourceHolder = context.getBean(JmsResourceHolder.class);
 
 			MessageCreator messageCreator = new MessageCreator() {
 				public Message createMessage(Session session)
