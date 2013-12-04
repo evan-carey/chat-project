@@ -188,6 +188,7 @@ public class EnterChatRoom implements MessageListener {
 		txtMessage.setJMSReplyTo(consumerQueue);
 		String correlationId = correlationid;
 		txtMessage.setJMSCorrelationID(correlationId);
+		System.out.println(correlationId);
 		this.producer.send(txtMessage);
 	}
 

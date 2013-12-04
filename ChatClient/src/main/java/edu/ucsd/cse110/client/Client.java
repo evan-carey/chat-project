@@ -45,7 +45,7 @@ public class Client extends AbstractClient {
 			producer.send(tm);
 
 			while (true) {
-				System.out.print("[" + username + "]: ");
+				//System.out.print("[" + username + "]: ");
 
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
