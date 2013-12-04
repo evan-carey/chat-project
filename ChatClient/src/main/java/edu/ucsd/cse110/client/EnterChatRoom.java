@@ -90,7 +90,7 @@ public class EnterChatRoom implements MessageListener {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
 
-				System.out.print("\n\"" + messageText + "\"\n\n");
+				System.out.print("\"" + messageText + "\"\n");
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();

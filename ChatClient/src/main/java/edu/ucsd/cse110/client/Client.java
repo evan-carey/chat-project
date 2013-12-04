@@ -270,7 +270,7 @@ public class Client extends AbstractClient {
 		System.out.println("   Displays the users current status.");
 		System.out.println("c:enterroom");
 		System.out.println("   Allows the user to enter existing chatroom.");
-		System.out.println("c:listroom");
+		System.out.println("c:listrooms");
 		System.out.println("   Lists all the existing chatrooms.");
 		System.out.println("c:create");
 		System.out.println("   Allows the user to create a room, provided it "

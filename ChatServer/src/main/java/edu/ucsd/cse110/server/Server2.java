@@ -1,10 +1,5 @@
 package edu.ucsd.cse110.server;
 
-/**
- * An attempt refactor the Server class and get Spring playing 
- * nice with it. Doesn't work yet.
- * @author Evan Carey
- */
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +23,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jms.JmsException;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.connection.JmsResourceHolder;
 import org.springframework.jms.core.JmsTemplate;
@@ -43,9 +39,6 @@ import edu.ucsd.cse110.server.accountinfo.Accounts;
 public class Server2 {
 
 	private static JmsTemplate jmsTemplate;
-	private MessageProducer producer;
-
-	private Destination adminQueue, adminQueue_2;
 
 	private ServerRunChatRoom serverrunchatroom;
 	private Accounts accounts;
@@ -61,84 +54,89 @@ public class Server2 {
 		ShutdownHook.attachShutdownHook(this);
 		try {
 			serverrunchatroom = new ServerRunChatRoom();
-			setupMessageQueueConsumer();
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
 	}
-
-	private void setupMessageQueueConsumer() throws JMSException {
-		//adminQueue = resourceHolder.getSession().createQueue(ServerConstants.produceTopicName);
-		//adminQueue_2 = resourceHolder.getSession().createQueue("templistchatroomqueue");
-		// producer = jmsTemplate.createProducer(resourceHolder.getSession(),adminQueue);
-	}
 	
-	private void handleDashCommand(Message tmp) throws JMSException {
-		String text = ((TextMessage) tmp).getText();
+	/**
+	 * Parses a user's command and calls the appropriate method.
+	 * @param msg The Message object that contains the user's command.
+	 * @throws JMSException
+	 */
+	private void handleDashCommand(Message msg) throws JMSException {
+		String text = ((TextMessage) msg).getText();
+		Destination replyTo = msg.getJMSReplyTo();
 
 		if (text.length() < 2)
 			return;
 		switch (text.charAt(1)) {
 		case 'g':
-			reportOnlineUsers(tmp.getJMSReplyTo());
+			sendMessage(replyTo, reportOnlineUsers());
 			break;
 		case 'c':
-			setChat(tmp);
+			setChat(msg);
 			break;
 		case 'b':
-			setBroadcast(tmp.getJMSReplyTo());
+			setBroadcast(replyTo);
 			break;
 		case 'm':
-			setMulticast(tmp);
+			setMulticast(msg);
 			break;
 		case 'd':
-			System.out.println("Got here" + tmp.getJMSCorrelationID());
-			privateChatContainer.remove(tmp.getJMSCorrelationID());
+			privateChatContainer.remove(msg.getJMSCorrelationID());
 			break;
 		default:
 			break;
 		}
 	}
 	
-	private void reportOnlineUsers(Destination dest) throws JMSException {
+	private MessageCreator reportOnlineUsers() throws JMSException {
 		if (loggedOn.isEmpty()) {
-			jmsTemplate.convertAndSend(dest, "No users found");
-			return;
+			// no users online
+			return new MessageCreator() {
+				public Message createMessage(Session session) throws JMSException {
+					TextMessage message = session.createTextMessage();
+					message.setText("No users found");
+					return message;
+				}
+			};
 		}
-		//System.out.println(users);
-	//	TextMessage usrs = create
+		
+		// create user list
 		MessageCreator mc1 = new MessageCreator() {
-		public Message createMessage(Session session) throws JMSException {
-			String users = "";
-			for (String s : loggedOn.keySet())
-				users += "\n\t" + s;
-			TextMessage message1 = session.createTextMessage();
-			message1.setText(users);
-			message1.setJMSCorrelationID("Online Users");
-			//message1.setJMSReplyTo(loggedOn.get(user2));
-			return message1;
+			public Message createMessage(Session session) throws JMSException {
+				String users = "";
+				for (String s : loggedOn.keySet())
+					users += "\n\t" + s;
+				TextMessage message1 = session.createTextMessage();
+				message1.setText(users);
+				message1.setJMSCorrelationID("Online Users");
+				//message1.setJMSReplyTo(loggedOn.get(user2));
+				return message1;
 			}
 		};
-		jmsTemplate.send(dest, mc1);
+		// return list
+		return mc1;
 	}
 	
-	private void setChat(final Message message) throws JMSException {
+	private boolean setChat(final Message message) throws JMSException {
 		String[] msg = ((TextMessage) message).getText().split(" ");
-		if (msg.length < 2) return;
+		if (msg.length < 2) return false;
 		final String user2 = msg[1];
 		
 		// private chat errors
 		if (!loggedOn.containsKey(user2)) {
-			jmsTemplate.convertAndSend(message.getJMSReplyTo(), "User " + user2 + " is not logged on.");
-			return;
+			sendMessage(message.getJMSReplyTo(), "User " + user2 + " is not logged on.");
+			return false;
 		}
 		if (privateChatContainer.contains(message.getJMSCorrelationID())) {
-			jmsTemplate.convertAndSend(message.getJMSReplyTo(), "You are already in a private chat. Please disconnect first.");
-			return;
+			sendMessage(message.getJMSReplyTo(), "You are already in a private chat. Please disconnect first.");
+			return false;
 		}
 		if (privateChatContainer.contains(user2)) {
-			jmsTemplate.convertAndSend(message.getJMSReplyTo(), "User " + user2 + " is already in a private chat.");
-			return;
+			sendMessage(message.getJMSReplyTo(), "User " + user2 + " is already in a private chat.");
+			return false;
 		}
 		
 		// start chat
@@ -156,17 +154,7 @@ public class Server2 {
 				return message1;
 			}
 		};
-		try{
-		    jmsTemplate.send(message.getJMSReplyTo(), mc1);
-		}catch(UnsupportedOperationException e){
-			return;
-			}
-		// set new Destination for user1 and send response
-//		TextMessage tm1 = resourceHolder.getSession().createTextMessage();
-//		tm1.setJMSCorrelationID(user2);
-//		tm1.setText("connect");
-//		tm1.setJMSReplyTo(loggedOn.get(user2));
-//		jmsTemplate.convertAndSend(message.getJMSReplyTo(), tm1);
+		sendMessage(message.getJMSReplyTo(), mc1);
 		
 		// send responses to user2
 		MessageCreator mc2 = new MessageCreator() {
@@ -178,24 +166,15 @@ public class Server2 {
 				return message2;
 			}
 		};
-		try{
-		jmsTemplate.send(loggedOn.get(user2), mc2);
-		}catch(UnsupportedOperationException e){
-			return;
-			}
-		// set new Destination for user2 and send response
-//		TextMessage tm2 = resourceHolder.getSession().createTextMessage();
-//		tm2.setJMSCorrelationID(message.getJMSCorrelationID());
-//		tm2.setText("connect");
-//		tm2.setJMSReplyTo(message.getJMSReplyTo());
-//		jmsTemplate.convertAndSend(loggedOn.get(user2), tm2);
+		sendMessage(loggedOn.get(user2), mc2);
+		return true;
 	}
 	
 	private void setBroadcast(Destination dest) {
-		jmsTemplate.convertAndSend(dest, "setbroadcast");
+		sendMessage(dest, "setbroadcast");
 	}
 	
-	private void setMulticast(Message tmp) throws JMSException {
+	private boolean setMulticast(Message tmp) throws JMSException {
 		Map<String, Destination> recipients = new HashMap<String, Destination>();
 		String[] users = ((TextMessage) tmp).getText().split(" ");
 		for (int i = 1; i < users.length; ++i) {
@@ -203,12 +182,12 @@ public class Server2 {
 				recipients.put(users[i], loggedOn.get(users[i]));
 			} else {
 				// invalid user specified in multicast
-				jmsTemplate.convertAndSend(tmp.getJMSReplyTo(), "failtosetmulticast");
-				return;
+				sendMessage(tmp.getJMSReplyTo(), "failtosetmulticast");
+				return false;
 			}
 		}
 		// reply to sender
-		jmsTemplate.convertAndSend(tmp.getJMSReplyTo(), "setmulticast");
+		sendMessage(tmp.getJMSReplyTo(), "setmulticast");
 		final String multicastTopic = tmp.getJMSCorrelationID() + ".multicast";
 		
 		// reply to recipients
@@ -225,104 +204,100 @@ public class Server2 {
 					return message1;
 				}
 			};
-			try{
-			jmsTemplate.send(recipient.getValue(), mc);
-			}
-			catch( UnsupportedOperationException e)
-			{ return;}
-//			TextMessage tm = resourceHolder.getSession().createTextMessage();
-//			tm.setJMSCorrelationID("setMulticastConsumer");
-//			tm.setText(multicastTopic);
-//			jmsTemplate.convertAndSend(recipient.getValue(), tm);
+			sendMessage(recipient.getValue(), mc);
 		}
 		
 		multicastContainer.put(multicastTopic,users);
 		multicastFlag=true;
+		return true;
 	}
 	
 	private boolean scanID(Message message) throws JMSException {
 		String msgID = message.getJMSCorrelationID().toLowerCase();
+		Destination replyTo = message.getJMSReplyTo();
+		String response = null;
+		
 		switch(msgID) {
 		case "createaccount":
-			createAccount(message);
-			return true;
+			response = createAccount(message);
+			break;
 		case "verifyaccount":
-			verifyAccount(message);
-			return true;
+			response = verifyAccount(message);
+			break;
 		case "editaccount":
-			editAccount(message);
-			return true;
-		case "listchatrooms":
-			listChatRooms(message);
-			return true;
+			response = editAccount(message);
+			break;
+		case "listchatrooms":;
+			response = listChatRooms(message);
+			break;
 		case "logoff":
 			removeUser(message);
-			return true;
+			break;
 		case "createchatroom":
-			createChatRoom(message);
-			return true;
+			response = createChatRoom(message);
+			break;
 		case "listchatroomusers":
-			listChatRoomUsers(message);
-			return true;
+			response = listChatRoomUsers(message);
+			break;
 		case "chatroomlogin":
 			chatRoomLogIn(message);
-			return true;
+			break;
 		case "chatroomlogout":
 			chatRoomLogOut(message);
-			return true;
+			break;
 		case "cancelmulticast":
 			cancelMulticast(message);
-			return true;
+			break;
 		default:
 			return false;
 		}
+		if (response != null) sendMessage(replyTo, response);
+		return true;
 	}
 
-	private void createAccount(Message msg) throws JMSException {
+	private String createAccount(Message msg) throws JMSException {
 		String[] info = ((TextMessage) msg).getText().split(" ");
-		if (info.length < 2) return;
+		if (info.length < 2) return null;
 		
 		try {
 			accounts.addAccount(info[0], info[1]);
-		} catch(AccountException e) {
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), e.getMessage());
+		} catch (AccountException e) {
+			return e.getMessage();
 		}
-		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "created");
+		return "created";
 	}
 	
-	private void verifyAccount(Message msg) throws JMSException {
+	private String verifyAccount(Message msg) throws JMSException {
 		String[] info = ((TextMessage) msg).getText().split(" ");
-		if (info.length < 2) return;
+		if (info.length < 2) return null;
 		if (loggedOn.containsKey(info[0])) {
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "Error: User " + info[0] + " is already logged on");
-			return;
+			return "Error: User " + info[0] + " is already logged on";
 		}
 		
 		try {
 			if (info[1].equals(accounts.getPassword(info[0])))
-				jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "valid");
+				return "valid";
 			else
-				jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "Invalid username/password combination.");
+				return "Invalid username/password combination.";
 		} catch (AccountException e) {
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), e.getMessage());
+			return e.getMessage();
 		}
 	}
 	
-	private void editAccount(Message msg) throws JMSException {
+	private String editAccount(Message msg) throws JMSException {
 		String[] info = ((TextMessage) msg).getText().split(" ");
-		if (info.length < 3) return;
+		if (info.length < 3) return null;
 		
 		try {
 			accounts.setPassword(info[0], info[1], info[2]);
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "edited");
+			return "edited";
 		} catch (AccountException e) {
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), e.getMessage());
+			return e.getMessage();
 		}
 	}
 	
-	private void listChatRooms(Message msg) throws JMSException {
-		String responseText = serverrunchatroom.transmitChatRoomList();
-		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), responseText);
+	private String listChatRooms(Message msg) throws JMSException {
+		return serverrunchatroom.transmitChatRoomList();
 	}
 	
 	private void removeUser(Message msg) throws JMSException {
@@ -330,26 +305,21 @@ public class Server2 {
 		loggedOn.remove(info[0]);
 	}
 	
-	private void createChatRoom(Message msg) throws JMSException {
+	private String createChatRoom(Message msg) throws JMSException {
 		String[] command = ((TextMessage) msg).getText().split(" ");
-		if (command.length < 2) return;
+		if (command.length < 2) return null;
 		
 		if (serverrunchatroom.roomExists(command[1])) {
-			// creation unsuccessful
-			jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "Room already exists.");
-			return;
+			return "Room already exists";
 		}
 		serverrunchatroom.createChatRoom(command[1]);
-		// creation successful
-		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), "Created new chatroom \"" + command[1] + "\"");
-		
-		//jmsTemplate.convertAndSend(msg.getJMSReplyTo(), serverrunchatroom.transmitChatRoomList()); 
+		return "Created new chatroom \"" + command[1] + "\"";
 	}
 	
-	private void listChatRoomUsers(Message msg) throws JMSException {
+	private String listChatRoomUsers(Message msg) throws JMSException {
 		String[] args = ((TextMessage) msg).getText().split(" ");
-		if (args.length < 2) return;
-		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), serverrunchatroom.transmitChatRoomUserList(args[1]));
+		if (args.length < 2) return null;
+		return serverrunchatroom.transmitChatRoomUserList(args[1]);
 	}
 	
 	private void chatRoomLogIn(Message msg) throws JMSException {
@@ -376,15 +346,7 @@ public class Server2 {
 					return message1;
 				}
 			};
-			try{
-			jmsTemplate.send(multidest, mc);
-			}catch(UnsupportedOperationException e){
-				return;
-				}
-//			TextMessage tm = resourceHolder.getSession().createTextMessage();
-//			tm.setJMSCorrelationID("removemulticastconsumer");
-//			tm.setText(tempTopicName);
-//			jmsTemplate.convertAndSend(multidest, tm);
+			sendMessage(multidest, mc);
 		}
 		multicastContainer.remove(tempTopicName);
 	}	
@@ -419,14 +381,8 @@ public class Server2 {
 					message1.setJMSCorrelationID("---Welcome---");
 					return message1;
 				}
-			}; 
-			try{
-			
-				jmsTemplate.send(msg.getJMSReplyTo(), mc);
-		
-			}catch(UnsupportedOperationException e){
-				return;
-			}
+			};
+			sendMessage(msg.getJMSReplyTo(), mc);
 		}
 		
 		// Regular message handling
@@ -451,6 +407,39 @@ public class Server2 {
 //		tm.setText(text);
 //		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), tm);
 		
+	}
+	
+	private void sendMessage(Destination dest, String msg) {
+		if (dest == null || msg == null) return;
+		try {
+			jmsTemplate.convertAndSend(dest, msg);
+		} catch (JmsException e) {
+			return;
+		} catch (UnsupportedOperationException e) {
+			return;
+		}
+	}
+	
+	private void sendMessage(Destination dest, Message msg) {
+		if (dest == null || msg == null) return;
+		try {
+			jmsTemplate.convertAndSend(dest, msg);
+		} catch (JmsException e) {
+			return;
+		} catch (UnsupportedOperationException e) {
+			return;
+		}
+	}
+	
+	private void sendMessage(Destination dest, MessageCreator mc) {
+		if (dest == null || mc == null) return;
+		try {
+			jmsTemplate.send(dest, mc);
+		} catch (JmsException e) {
+			return;
+		} catch (UnsupportedOperationException e) {
+			return;
+		}
 	}
 
 	@Bean
