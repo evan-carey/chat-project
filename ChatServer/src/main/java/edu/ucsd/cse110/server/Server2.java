@@ -91,7 +91,7 @@ public class Server2 {
 		}
 	}
 	
-	private MessageCreator reportOnlineUsers() throws JMSException {
+	public MessageCreator reportOnlineUsers() throws JMSException {
 		if (loggedOn.isEmpty()) {
 			// no users online
 			return new MessageCreator() {
@@ -516,6 +516,7 @@ public class Server2 {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			context.close();
 			System.out.println("Terminating server.");
 			System.exit(0);
 			
