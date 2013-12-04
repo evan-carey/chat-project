@@ -69,7 +69,7 @@ public class EnterChatRoom implements MessageListener {
 		System.out.println("You are attemping to enter a chatroom....");
 		System.out.println("Current chatrooms are:");
 		System.out.println("Please enter the name of the chatroom you want to join in");
-		commandChatRoom("listchatroom");
+		commandChatRoom("listchatrooms");
 		selectChatRoom();
 		// responseConsumer.close(); //unsubscribe from the temporary topic
 		// used to transmit chatroomlist
@@ -90,7 +90,7 @@ public class EnterChatRoom implements MessageListener {
 				TextMessage textMessage = (TextMessage) message;
 				messageText = textMessage.getText();
 
-				System.out.print("\n\"" + messageText + "\"\n\n>>");
+				System.out.print("\n\"" + messageText + "\"\n\n");
 			}
 		} catch (JMSException e) {
 			e.printStackTrace();
@@ -141,8 +141,9 @@ public class EnterChatRoom implements MessageListener {
 	public void inChatRoom() {
 
 		try {
+			System.out.print(">>");
 			while (true) {
-				System.out.print(">>");
+				
 
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
@@ -196,6 +197,7 @@ public class EnterChatRoom implements MessageListener {
 				txtMessage.setText(message);
 
 				this.producer_chatroom.send(txtMessage);
+				//System.out.print(">>");
 			}
 
 		} catch (JMSException e) {
@@ -208,7 +210,7 @@ public class EnterChatRoom implements MessageListener {
 	public boolean listChatRoom() throws JMSException{
 		try{
 			System.out.println("The current chatroom list");
-			commandChatRoom("listchatroom");
+			commandChatRoom("listchatrooms");
 			return true;
 		}catch(JMSException e){
 			System.err.println(e.getMessage());
@@ -265,7 +267,7 @@ public class EnterChatRoom implements MessageListener {
 		System.out.println("*********CHATROOM COMMANDS***********");
 		System.out.println("whereami");
 		System.out.println("   Displays the users current status.");
-		System.out.println("c:listroom");
+		System.out.println("c:listrooms");
 		System.out.println("   Lists all the existing chatrooms.");
 		System.out.println("c:listusers");
 		System.out.println("   Lists all the users in the current chatroom");

@@ -33,7 +33,7 @@ public class Client extends AbstractClient {
 		setUsername(username);
 		initialChatRoom = new EnterChatRoom(username);
 		multicastTopic = username + ".multicast";
-		System.out.println(">>>>>>>>>>>>>>" + username);
+		//System.out.println(">>>>>>>>>>>>>>" + username);
 		enterServer();
 	}
 
@@ -132,7 +132,7 @@ public class Client extends AbstractClient {
 			return;
 		}
 		if (privateChat) {
-			System.out.println("You are in a Peer-to-Peer chat with" + privateObject);
+			System.out.println("You are in a Peer-to-Peer chat with " + privateObject);
 			return;
 		}
 		System.out.println("You are sending messages to the Server");

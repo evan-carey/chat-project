@@ -91,6 +91,10 @@ public class Server2 {
 		case 'm':
 			setMulticast(tmp);
 			break;
+		case 'd':
+			System.out.println("Got here" + tmp.getJMSCorrelationID());
+			privateChatContainer.remove(tmp.getJMSCorrelationID());
+			break;
 		default:
 			break;
 		}
@@ -101,12 +105,21 @@ public class Server2 {
 			jmsTemplate.convertAndSend(dest, "No users found");
 			return;
 		}
-		String users = "\nOnline Users: \n";
-		for (String s : loggedOn.keySet())
-			users += "    " + s + "\n";
-
-		System.out.println(users);
-		jmsTemplate.convertAndSend(dest, users);
+		//System.out.println(users);
+	//	TextMessage usrs = create
+		MessageCreator mc1 = new MessageCreator() {
+		public Message createMessage(Session session) throws JMSException {
+			String users = "";
+			for (String s : loggedOn.keySet())
+				users += "\n\t" + s;
+			TextMessage message1 = session.createTextMessage();
+			message1.setText(users);
+			message1.setJMSCorrelationID("Online Users");
+			//message1.setJMSReplyTo(loggedOn.get(user2));
+			return message1;
+			}
+		};
+		jmsTemplate.send(dest, mc1);
 	}
 	
 	private void setChat(final Message message) throws JMSException {
@@ -143,8 +156,11 @@ public class Server2 {
 				return message1;
 			}
 		};
-		jmsTemplate.send(message.getJMSReplyTo(), mc1);
-		
+		try{
+		    jmsTemplate.send(message.getJMSReplyTo(), mc1);
+		}catch(UnsupportedOperationException e){
+			return;
+			}
 		// set new Destination for user1 and send response
 //		TextMessage tm1 = resourceHolder.getSession().createTextMessage();
 //		tm1.setJMSCorrelationID(user2);
@@ -162,8 +178,11 @@ public class Server2 {
 				return message2;
 			}
 		};
+		try{
 		jmsTemplate.send(loggedOn.get(user2), mc2);
-		
+		}catch(UnsupportedOperationException e){
+			return;
+			}
 		// set new Destination for user2 and send response
 //		TextMessage tm2 = resourceHolder.getSession().createTextMessage();
 //		tm2.setJMSCorrelationID(message.getJMSCorrelationID());
@@ -181,7 +200,7 @@ public class Server2 {
 		String[] users = ((TextMessage) tmp).getText().split(" ");
 		for (int i = 1; i < users.length; ++i) {
 			if (loggedOn.containsKey(users[i])) {
-				recipients.put(users[i], loggedOn.get(users));
+				recipients.put(users[i], loggedOn.get(users[i]));
 			} else {
 				// invalid user specified in multicast
 				jmsTemplate.convertAndSend(tmp.getJMSReplyTo(), "failtosetmulticast");
@@ -196,16 +215,21 @@ public class Server2 {
 		Iterator<Entry<String, Destination>> it = recipients.entrySet().iterator();
 		while(it.hasNext()) {
 			Map.Entry<String, Destination> recipient = it.next();
+			System.out.println("multicast destinations: " + recipient.getValue());/////////
 			MessageCreator mc = new MessageCreator() {
 				public Message createMessage(Session session) throws JMSException {
 					TextMessage message1 = session.createTextMessage();
 					message1.setText(multicastTopic);
 					message1.setJMSCorrelationID("setMulticastConsumer");
+					System.out.println("set multicast command");/////////
 					return message1;
 				}
 			};
+			try{
 			jmsTemplate.send(recipient.getValue(), mc);
-			
+			}
+			catch( UnsupportedOperationException e)
+			{ return;}
 //			TextMessage tm = resourceHolder.getSession().createTextMessage();
 //			tm.setJMSCorrelationID("setMulticastConsumer");
 //			tm.setText(multicastTopic);
@@ -352,7 +376,11 @@ public class Server2 {
 					return message1;
 				}
 			};
+			try{
 			jmsTemplate.send(multidest, mc);
+			}catch(UnsupportedOperationException e){
+				return;
+				}
 //			TextMessage tm = resourceHolder.getSession().createTextMessage();
 //			tm.setJMSCorrelationID("removemulticastconsumer");
 //			tm.setText(tempTopicName);
@@ -384,19 +412,39 @@ public class Server2 {
 		Destination dest = msg.getJMSReplyTo();
 		if (!loggedOn.containsKey(user)) {
 			loggedOn.put(user, dest);
+			MessageCreator mc = new MessageCreator() {
+				public Message createMessage(Session session) throws JMSException {
+					TextMessage message1 = session.createTextMessage();
+					message1.setText(msg.getJMSCorrelationID());
+					message1.setJMSCorrelationID("---Welcome---");
+					return message1;
+				}
+			}; 
+			try{
+			
+				jmsTemplate.send(msg.getJMSReplyTo(), mc);
+		
+			}catch(UnsupportedOperationException e){
+				return;
+			}
 		}
 		
 		// Regular message handling
-		MessageCreator mc = new MessageCreator() {
+		/*MessageCreator mc = new MessageCreator() {
 			public Message createMessage(Session session) throws JMSException {
 				TextMessage message1 = session.createTextMessage();
 				message1.setText(text);
 				message1.setJMSCorrelationID(msg.getJMSCorrelationID());
 				return message1;
 			}
-		};
-		jmsTemplate.send(msg.getJMSReplyTo(), mc);
+		}; 
+		try{
 		
+			jmsTemplate.send(msg.getJMSReplyTo(), mc);
+	
+		}catch(UnsupportedOperationException e){
+			return;
+		}*/
 		System.out.println(msg.getJMSCorrelationID()+" >> " + text);
 //		TextMessage tm = resourceHolder.getSession().createTextMessage();
 //		tm.setJMSCorrelationID(msg.getJMSCorrelationID());
