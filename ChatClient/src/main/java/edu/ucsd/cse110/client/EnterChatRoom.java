@@ -50,14 +50,6 @@ public class EnterChatRoom implements MessageListener {
 			consumerQueue = session.createTemporaryTopic();
 			responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
-			//System.out.println("You are attemping to enter a chatroom....");
-			//System.out.println("Current chatrooms are:");
-			//System.out.println("Please enter the name of the chatroom you want to join in");
-			//commandChatRoom("listchatroom");
-			//selectChatRoom();
-			// responseConsumer.close(); //unsubscribe from the temporary topic
-			// used to transmit chatroomlist
-			//inChatRoom();
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
@@ -68,12 +60,18 @@ public class EnterChatRoom implements MessageListener {
 		new EnterChatRoom(username);
 		System.out.println("You are attemping to enter a chatroom....");
 		System.out.println("Current chatrooms are:");
-		System.out.println("Please enter the name of the chatroom you want to join in");
+		System.out.println("Please enter the name of the chatroom you want to join in or type LEAVE to return to the server");
 		commandChatRoom("listchatrooms");
-		selectChatRoom();
-		// responseConsumer.close(); //unsubscribe from the temporary topic
-		// used to transmit chatroomlist
-		inChatRoom();
+		
+		
+		boolean enterOrLeave = selectChatRoom();
+		if(enterOrLeave){
+			// responseConsumer.close(); //unsubscribe from the temporary topic
+			// used to transmit chatroomlist
+			inChatRoom();
+		}else{
+			System.out.println("Returning to Server...");		
+		}
 		
 	}
 	
@@ -102,12 +100,12 @@ public class EnterChatRoom implements MessageListener {
 		txtSender(command, command);
 	}
 
-	public void selectChatRoom() throws JMSException {
+	public boolean selectChatRoom() throws JMSException {
 		// Do you want to create one? Implement later and also:created chatroom
 		// never deleted
 		boolean chatroomflag = false;
 		String chatroomname = null;
-		// System.out.println("Please enter the name of the chatroom you want to join in");
+
 		while (!chatroomflag) {
 			System.out.print(">>");
 
@@ -115,13 +113,18 @@ public class EnterChatRoom implements MessageListener {
 			chatroomname = keyboard.nextLine();
 			
 			for (String chatroomentry : ChatRoomStringList) {
-				if (chatroomname.equals(chatroomentry))
+				if (chatroomname.equals(chatroomentry)){
 					chatroomflag = true;
+					
+				}else if(chatroomname.equals("LEAVE")){
+					return false;
+				}
 			}
 			if (!chatroomflag) {
-				System.out.println("Chatroom name is case sensitive, your chatroom name is not in the list, please reselect");
+				System.out.println("Chatroom name is case sensitive, your chatroom name is not in the list, please reselect.");
 			}
 		}
+		//}
 
 		// send chatroom login message:
 		currentChatRoom = chatroomname;
@@ -135,10 +138,10 @@ public class EnterChatRoom implements MessageListener {
 		// set consumer
 		responseConsumer_chatroom = session.createConsumer(consumeTopic_chatroom);
 		responseConsumer_chatroom.setMessageListener(this);
-		return;
+		return true;
 	}
 
-	public void inChatRoom() {
+	public boolean inChatRoom() {
 
 		try {
 			System.out.print(">>");
@@ -181,7 +184,7 @@ public class EnterChatRoom implements MessageListener {
 					
 					//Don't us the below method to close, use the two above
 					//connection.close();
-					return;
+					return false;
 				}
 
 				if ("whereami".equalsIgnoreCase(message)) {
@@ -202,6 +205,7 @@ public class EnterChatRoom implements MessageListener {
 
 		} catch (JMSException e) {
 			e.printStackTrace();
+			return true;
 		}
 
 	}
@@ -247,8 +251,9 @@ public class EnterChatRoom implements MessageListener {
 	}
 	
 	
-	public void logoff(){
+	public boolean logoff(){
 		System.out.println("You must first exit the chat room to logoff...");
+		return true;
 	}
 	
 	
@@ -263,7 +268,7 @@ public class EnterChatRoom implements MessageListener {
 	}
 
 	
-	public static void listChatroomCommands(){
+	public static boolean listChatroomCommands(){
 		System.out.println("*********CHATROOM COMMANDS***********");
 		System.out.println("whereami");
 		System.out.println("   Displays the users current status.");
@@ -281,24 +286,12 @@ public class EnterChatRoom implements MessageListener {
 		System.out.println("  Cannot logoff while in an active chatroom. First"
 				+ " type c:quit to get to the server they type logoff.");
 		System.out.println("**************************");
+		return true;
 	
 	}
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	
 	public static void main(String[] args) throws JMSException {
 		new EnterChatRoom("testname");
