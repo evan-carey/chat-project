@@ -41,6 +41,7 @@ public class Server implements MessageListener {
 	private String[] commandParse = null;
 	private int parseSize;
 	
+	
 	public Server() {
 		accounts = new Accounts();
 		//onlineUsers = new HashMap<String, String>();
@@ -53,7 +54,7 @@ public class Server implements MessageListener {
 			broker.start();
 			serverrunchatroom = new ServerRunChatRoom();
 		} catch (Exception e) {
-			System.err.println("Unable to initilize the server.");
+			System.err.println("Unable to initialize the server.");
 		}
 
 		// Delegating the handling of messages to another class, instantiate it
@@ -148,6 +149,10 @@ public class Server implements MessageListener {
 			break;
 		case 'm':
 			setMulticast(tmp);
+			break;
+		case 'd':
+			System.out.println("Got here" + tm.getJMSCorrelationID());
+			privateChatContainer.remove(tm.getJMSCorrelationID());
 			break;
 		default:
 			break;
@@ -640,20 +645,27 @@ public class Server implements MessageListener {
 	}
 
 	private void setChat(Message message) throws JMSException {
+		
 		TextMessage tmp = (TextMessage) message;
 		String[] msg = tmp.getText().split(" ");
+		
+		
+		if(msg.length < 2){
+			TextMessage systemResponse=this.session.createTextMessage();
+			systemResponse.setText("Sent from Server: Invalid Input. Please try again.");
+			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
+			return;
+		}
 		String user2 = msg[1];
-		
-		
 		if(!loggedOn.containsKey(user2)){
 			TextMessage systemResponse=this.session.createTextMessage();
-			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is a logged on user. This command will do nothing");
+			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is a logged on user.");
 			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
 			return;
 		}
 		if( privateChatContainer.contains(message.getJMSCorrelationID()) || privateChatContainer.contains(user2)){
 			TextMessage systemResponse=this.session.createTextMessage();
-			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is not in another chat.This command will do nothing");
+			systemResponse.setText("Sent from Server: The user in parameter list not avaiable since he is in another chat.");
 			this.replyProducer.send(message.getJMSReplyTo(), systemResponse);
 			return;
 		}

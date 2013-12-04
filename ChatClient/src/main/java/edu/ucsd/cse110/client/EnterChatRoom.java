@@ -14,7 +14,7 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
-
+ 
 public class EnterChatRoom implements MessageListener {
 	/** Username associated with the client */
 	private String username;
@@ -50,19 +50,34 @@ public class EnterChatRoom implements MessageListener {
 			consumerQueue = session.createTemporaryTopic();
 			responseConsumer = session.createConsumer(consumerQueue);
 			responseConsumer.setMessageListener(this);
-			System.out.println("You are attemping to enter a chatroom....");
-			System.out.println("Current chatrooms are:");
-			System.out.println("Please enter the name of the chatroom you want to join in");
-			commandChatRoom("listchatroom");
-			selectChatRoom();
+			//System.out.println("You are attemping to enter a chatroom....");
+			//System.out.println("Current chatrooms are:");
+			//System.out.println("Please enter the name of the chatroom you want to join in");
+			//commandChatRoom("listchatroom");
+			//selectChatRoom();
 			// responseConsumer.close(); //unsubscribe from the temporary topic
 			// used to transmit chatroomlist
-			inChatRoom();
+			//inChatRoom();
 		} catch (JMSException e) {
 			e.printStackTrace();
 		}
 	}
 
+	
+	public void EnterChatRoomNow() throws JMSException{
+		new EnterChatRoom(username);
+		System.out.println("You are attemping to enter a chatroom....");
+		System.out.println("Current chatrooms are:");
+		System.out.println("Please enter the name of the chatroom you want to join in");
+		commandChatRoom("listchatroom");
+		selectChatRoom();
+		// responseConsumer.close(); //unsubscribe from the temporary topic
+		// used to transmit chatroomlist
+		inChatRoom();
+		
+	}
+	
+	
 	public void onMessage(Message message) {
 		try {
 			ChatRoomStringList = ((TextMessage) message).getText().split(" ");
@@ -132,41 +147,48 @@ public class EnterChatRoom implements MessageListener {
 				Scanner keyboard = new Scanner(System.in);
 				String message = keyboard.nextLine();
 
-				if ("Command:LISTCHATROOM".equalsIgnoreCase(message)) {
-
-					System.out.println("The current chatroom list");
-					commandChatRoom("listchatroom");
+				if ("C:LISTROOMS".equalsIgnoreCase(message)) {
+					listChatRoom();
 					continue;
 				}
 
-				if ("Command:LISTCHATROOMUSERS".equalsIgnoreCase(message)) {
-
-					System.out.println("The current chatroom userlist is:");
-					txtSender(username + " " + currentChatRoom, "listchatroomusers");
+				if ("C:LISTUSERS".equalsIgnoreCase(message)) {
+					listChatRoomUsers();
 					continue;
 				}
 
-				if ("Command:CREATECHATROOM".equalsIgnoreCase(message)) {
-					System.out.println("Please enter the name of the chatroom you want to create.");
-					System.out.print(">>");
-					String chatroomname = keyboard.nextLine();
-					txtSender("createchatroom " + chatroomname, "createchatroom");
+				if ("C:CREATE".equalsIgnoreCase(message)) {
+					createChatRoom();
+					continue;
+				}
+				if ("LOGOFF".equalsIgnoreCase(message)) {
+					logoff();
+					continue;
+				}
+				if ("C:HELP".equalsIgnoreCase(message)) {
+					listChatroomCommands();
 					continue;
 				}
 
-				if ("Command:quitchatroom".equalsIgnoreCase(message)) {
+				if ("C:quit".equalsIgnoreCase(message)) {
 					System.out.println("Client quit current chatroom, return to default interface");
 					txtSender(username + " " + currentChatRoom, "chatroomlogout");
-					connection.close();
+					
+					//Closed these instead of closing connection
+					responseConsumer_chatroom.close();
+					producer_chatroom.close();
+					
+					//Don't us the below method to close, use the two above
+					//connection.close();
 					return;
 				}
 
-				if ("Command:whereami".equalsIgnoreCase(message)) {
+				if ("whereami".equalsIgnoreCase(message)) {
 					
 					System.out.println("You are in the ChatRoom:"
 							+ currentChatRoom);
 
-					return;
+					continue;
 				}
 				
 				message="["+username+"]"+":"+message;
@@ -181,7 +203,53 @@ public class EnterChatRoom implements MessageListener {
 		}
 
 	}
+	
+	
+	public boolean listChatRoom() throws JMSException{
+		try{
+			System.out.println("The current chatroom list");
+			commandChatRoom("listchatroom");
+			return true;
+		}catch(JMSException e){
+			System.err.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public boolean listChatRoomUsers() throws JMSException{
+		try{
+			System.out.println("The current chatroom userlist is:");
+			txtSender(username + " " + currentChatRoom, "listchatroomusers");
+			return true;
+		}catch(JMSException e){
+			System.err.println(e.getMessage());
+		}
+		return false;
+	}
+	
 
+	public String createChatRoom() throws JMSException{
+		try{
+			System.out.println("Please enter the name of the chatroom you want to create.");
+			System.out.print(">>");
+			Scanner myKeyboard = new Scanner(System.in);
+			String chatRoomName = myKeyboard.nextLine();
+			//myKeyboard.close();
+			
+			txtSender("createchatroom " + chatRoomName, "createchatroom");
+			return chatRoomName;
+		}catch(JMSException e){
+			System.err.println(e.getMessage());
+		}
+		return null;
+	}
+	
+	
+	public void logoff(){
+		System.out.println("You must first exit the chat room to logoff...");
+	}
+	
+	
 	public void txtSender(String content, String correlationid) throws JMSException {
 		TextMessage txtMessage = session.createTextMessage();
 		txtMessage.setText(content);
@@ -192,6 +260,44 @@ public class EnterChatRoom implements MessageListener {
 		this.producer.send(txtMessage);
 	}
 
+	
+	public static void listChatroomCommands(){
+		System.out.println("*********CHATROOM COMMANDS***********");
+		System.out.println("whereami");
+		System.out.println("   Displays the users current status.");
+		System.out.println("c:listroom");
+		System.out.println("   Lists all the existing chatrooms.");
+		System.out.println("c:listusers");
+		System.out.println("   Lists all the users in the current chatroom");
+		System.out.println("c:create");
+		System.out.println("   Allows the user to create a room, provided it "
+				+ "doesn't alreay exist");		
+		System.out.println("c:quit");
+		System.out.println("  Closes the connection to the current chatroom"
+				+ " and returns user to the Server");
+		System.out.println("logoff");
+		System.out.println("  Cannot logoff while in an active chatroom. First"
+				+ " type c:quit to get to the server they type logoff.");
+		System.out.println("**************************");
+	
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	public static void main(String[] args) throws JMSException {
 		new EnterChatRoom("testname");
 	}
