@@ -22,7 +22,5 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/linux/ieng6/oce/2d/pthsu/Desktop/easymock-3.2.zip"/>
-	<classpathentry kind="lib" path="/home/linux/ieng6/oce/2d/pthsu/Desktop/easymock-3.2/easymock-3.2.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
