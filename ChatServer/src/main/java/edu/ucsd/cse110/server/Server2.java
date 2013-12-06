@@ -544,6 +544,8 @@ public class Server2 {
 	}
 
 	public static void main(String[] args) {
+		if (args.length > 0) 
+			ServerConstants.messageBrokerUrl = "tcp://" + args[0];
 		try {
 			BrokerService broker = new BrokerService();
 			broker.addConnector(ServerConstants.messageBrokerUrl);
