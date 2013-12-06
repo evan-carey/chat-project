@@ -206,6 +206,10 @@ public class Client extends AbstractClient {
 					setTopicConsumer(messageText);
 					return;
 				}
+				
+				if(message.getJMSCorrelationID()!=null && message.getJMSCorrelationID().equals("onlineuserspassed")){
+					return;
+				}
 
 				if (message.getJMSCorrelationID() != null && message.getJMSCorrelationID().equals("failtosetmulticast")) {
 					System.out.println("Username Parameters not valid! Please reenter your command, this command will do nothing");
