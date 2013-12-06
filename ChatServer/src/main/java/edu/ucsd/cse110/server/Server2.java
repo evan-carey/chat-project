@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
 import java.util.Set;
 
 import javax.jms.ConnectionFactory;
@@ -55,6 +56,7 @@ public class Server2 {
 			e.printStackTrace();
 		}
 	}
+	
 	
 	/**
 	 * Parses a user's command and calls the appropriate method.
@@ -117,7 +119,7 @@ public class Server2 {
 		return mc1;
 	}
 	
-	private boolean setChat(final Message message) throws JMSException {
+	public boolean setChat(final Message message) throws JMSException {
 		String[] msg = ((TextMessage) message).getText().split(" ");
 		if (msg.length < 2) return false;
 		final String user2 = msg[1];
@@ -197,7 +199,7 @@ public class Server2 {
 					TextMessage message1 = session.createTextMessage();
 					message1.setText(multicastTopic);
 					message1.setJMSCorrelationID("setMulticastConsumer");
-					System.out.println("set multicast command");/////////
+					System.out.println("set multicast command");
 					return message1;
 				}
 			};
@@ -382,28 +384,7 @@ public class Server2 {
 			};
 			sendMessage(msg.getJMSReplyTo(), mc);
 		}
-		
-		// Regular message handling
-		/*MessageCreator mc = new MessageCreator() {
-			public Message createMessage(Session session) throws JMSException {
-				TextMessage message1 = session.createTextMessage();
-				message1.setText(text);
-				message1.setJMSCorrelationID(msg.getJMSCorrelationID());
-				return message1;
-			}
-		}; 
-		try{
-		
-			jmsTemplate.send(msg.getJMSReplyTo(), mc);
-	
-		}catch(UnsupportedOperationException e){
-			return;
-		}*/
 		System.out.println(msg.getJMSCorrelationID()+" >> " + text);
-//		TextMessage tm = resourceHolder.getSession().createTextMessage();
-//		tm.setJMSCorrelationID(msg.getJMSCorrelationID());
-//		tm.setText(text);
-//		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), tm);
 		
 	}
 	
@@ -493,6 +474,10 @@ public class Server2 {
 				}
 			});
 		}
+	}
+	
+	public Map getUserMap(){
+		return loggedOn;
 	}
 
 	public static void main(String[] args) {
