@@ -137,13 +137,8 @@ public class ConnectingClient extends AbstractClient {
 	}
 	
 	public static void main(String[] args) {
-		/*
-		 * NOTE: If you want to test the messaging without having to log in
-		 * first, create a new Client(). If you want to test logging in too,
-		 * create a new ConnectingClient() instead.
-		 */
-
-		// new Client();
+		if (args.length > 0)
+			ClientConstants.messageBrokerUrl = "tcp://" + args[0];
 		new ConnectingClient();
 	}
 
