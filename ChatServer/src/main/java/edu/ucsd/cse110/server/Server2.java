@@ -181,7 +181,17 @@ public class Server2 {
 				recipients.put(users[i], loggedOn.get(users[i]));
 			} else {
 				// invalid user specified in multicast
-				sendMessage(tmp.getJMSReplyTo(), "failtosetmulticast");
+				MessageCreator mc = new MessageCreator() {
+					@Override
+					public Message createMessage(Session session) throws JMSException{
+						TextMessage msg = session.createTextMessage();
+						msg.setText("failtosetmulticast");
+						msg.setJMSCorrelationID("failtosetmulticast");
+						return msg;
+					}
+				};
+				
+				sendMessage(tmp.getJMSReplyTo(), mc);
 				return false;
 			}
 		}
