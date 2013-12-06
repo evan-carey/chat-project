@@ -256,6 +256,8 @@ public class Client extends AbstractClient {
 		System.out.println("-c [username]");
 		System.out.println("   Establishes a private chat between current user"
 				+ "and designated username.");
+		System.out.println("-d");
+		System.out.println("   Disconnects both peers from private chat");
 		System.out.println("-g");
 		System.out.println("   Returns all online users.");
 		System.out.println("-b");
