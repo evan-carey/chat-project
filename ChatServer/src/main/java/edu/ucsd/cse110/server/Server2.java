@@ -1,6 +1,7 @@
 package edu.ucsd.cse110.server;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -59,6 +60,15 @@ public class Server2 {
 		}
 	}
 	
+
+	public String getStringLoggedOn(){
+		String[] stringArray=loggedOn.keySet().toArray(new String[0]);
+		String returnString="";
+		for(String i: stringArray){
+			returnString+=i+" ";
+		}
+		return returnString;
+	}
 	/**
 	 * Parses a user's command and calls the appropriate method.
 	 * @param msg The Message object that contains the user's command.
@@ -213,10 +223,11 @@ public class Server2 {
 	}
 	
 	private boolean scanID(Message message) throws JMSException {
+		if(message.getJMSCorrelationID()==null){
+			return false;
+		}
 		String msgID = message.getJMSCorrelationID().toLowerCase();
-		Destination replyTo = message.getJMSReplyTo();
 		String response = null;
-		
 		switch(msgID) {
 		case "createaccount":
 			response = createAccount(message);
@@ -251,6 +262,11 @@ public class Server2 {
 		default:
 			return false;
 		}
+		
+
+		Destination replyTo = message.getJMSReplyTo();
+		
+	
 		if (response != null) sendMessage(replyTo, response);
 		return true;
 	}
@@ -303,6 +319,26 @@ public class Server2 {
 	private void removeUser(Message msg) throws JMSException {
 		String[] info = ((TextMessage) msg).getText().split(" ");
 		loggedOn.remove(info[0]);
+		
+		
+		MessageCreator mc_onlineuser = new MessageCreator() {
+			public Message createMessage(Session session) throws JMSException {
+				TextMessage message1 = session.createTextMessage();
+				message1.setText(getStringLoggedOn());
+				message1.setJMSCorrelationID("onlineuserspassed");
+				//message1.setJMSDestination();
+				return message1;
+			}
+		};
+		
+		Collection<Destination> loggedOnDestinations=loggedOn.values();
+		
+		for (Destination i:loggedOnDestinations){
+			sendMessage(i,mc_onlineuser);
+		}
+
+		
+	
 	}
 	
 	private String createChatRoom(Message msg) throws JMSException {
@@ -372,8 +408,25 @@ public class Server2 {
 		// check if user is not logged on and add them
 		String user = msg.getJMSCorrelationID();
 		Destination dest = msg.getJMSReplyTo();
-		if (!loggedOn.containsKey(user)) {
+		if (msg.getJMSCorrelationID()!=null && !loggedOn.containsKey(user)) {
 			loggedOn.put(user, dest);
+			
+			MessageCreator mc_onlineuser = new MessageCreator() {
+				public Message createMessage(Session session) throws JMSException {
+					TextMessage message1 = session.createTextMessage();
+					message1.setText(getStringLoggedOn());
+					message1.setJMSCorrelationID("onlineuserspassed");
+					//message1.setJMSDestination();
+					return message1;
+				}
+			};
+			
+			Collection<Destination> loggedOnDestinations=loggedOn.values();
+			
+			for (Destination i:loggedOnDestinations){
+				sendMessage(i,mc_onlineuser);
+			}
+			
 			MessageCreator mc = new MessageCreator() {
 				public Message createMessage(Session session) throws JMSException {
 					TextMessage message1 = session.createTextMessage();
