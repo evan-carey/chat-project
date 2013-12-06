@@ -8,6 +8,8 @@ import javax.jms.Session;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
+import edu.ucsd.cse110.client.ClientConstants;
+
 
 public class Server  {
 	private Connection connection;
@@ -15,15 +17,18 @@ public class Server  {
 	private boolean transacted = false;
 	private MessageProducer replyProducer;
 	private String database = "src/testFile.txt";
-	public static ActiveMQConnectionFactory connectionFactory=  new ActiveMQConnectionFactory("tcp://localhost:61616");
+	public static ActiveMQConnectionFactory connectionFactory;
 	private ChatRoomContainer ChatRoomList = new ChatRoomContainer();
 	private Destination defaultTopic;
 	private DefaultChatRoom mainDefault;
 	MessageConsumer myConsumer;
 	
-	public Server(){
+	public Server(String arg0){
 		try {
-			
+			if (arg0 != null)
+				connectionFactory = new ActiveMQConnectionFactory("tcp://" + arg0);
+			else
+				connectionFactory = new ActiveMQConnectionFactory(ClientConstants.messageBrokerUrl);
 			mainDefault = new DefaultChatRoom();
 			
 			connection = connectionFactory.createConnection();

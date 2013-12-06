@@ -12,7 +12,9 @@ public class Chatwindow {
 	
 	public static void main(String[] args) throws FileNotFoundException{
 		new MainMenu();	
-		server=new Server();
+		String arg0 = null;
+		if (args.length > 0) arg0 = args[0];
+		server = new Server(arg0);
 	}
 	
 }

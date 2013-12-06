@@ -29,8 +29,6 @@ public class Client implements MessageListener{
 	private ChatRoomContainer chatRoomContainer;
 	
 	public Client(){
-		name = "poop";
-		password = "snacks";
 		Chatwindow.clientContainer.addClient(this);
 	}
 	
