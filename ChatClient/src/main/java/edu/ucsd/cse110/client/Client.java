@@ -34,7 +34,7 @@ public class Client extends AbstractClient {
 		initialChatRoom = new EnterChatRoom(username);
 		multicastTopic = username + ".multicast";
 		//System.out.println(">>>>>>>>>>>>>>" + username);
-		enterServer();
+		//enterServer();
 	}
 
 	public void enterServer() {
@@ -287,15 +287,6 @@ public class Client extends AbstractClient {
 	}
 	
 
-	public static void main(String[] args) {
-		/*
-		 * NOTE: If you want to test the messaging without having to log in
-		 * first, create a new Client(). If you want to test logging in too,
-		 * create a new ConnectingClient() instead.
-		 */
-
-		// new Client();
-		new ConnectingClient();
-	}
+	
 
 }

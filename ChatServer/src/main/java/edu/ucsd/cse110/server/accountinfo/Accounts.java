@@ -49,7 +49,6 @@ public class Accounts {
 		Iterator<Entry<String, String>> it = accounts.entrySet().iterator();
 		while(it.hasNext()) {
 			Entry<String,String> e = it.next();
-			System.out.println(e.getKey() + " " + e.getValue());
 		}
 	}
 	
@@ -115,7 +114,6 @@ public class Accounts {
 			
 			while (it.hasNext()) {
 				Map.Entry<String, String> account = it.next();
-				System.out.println(account.getKey() +" " + account.getValue());
 				out.write(account.getKey() + " " + account.getValue());
 				out.newLine();
 			}
