@@ -17,3 +17,8 @@ spongebob/wazzupdude
 testnam/testpass
 2/2
 3/3
+u/p
+evan/carey
+pthsu/password
+n/p
+wang/wang

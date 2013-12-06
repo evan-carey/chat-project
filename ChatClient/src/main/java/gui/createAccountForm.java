@@ -125,7 +125,7 @@ private boolean addUser(String username, String password){
 
 	try{
 		
-		File file = new File("src\\testFile.txt");
+		File file = new File("accounts.txt");
 		if (!file.exists()){
 			file.createNewFile();
 		}
@@ -133,7 +133,7 @@ private boolean addUser(String username, String password){
 		FileWriter fw = new FileWriter(file.getAbsoluteFile(), true);
 		BufferedWriter bw = new BufferedWriter(fw);
 		
-		bw.write(username+ '/' + password+"\n");
+		bw.write(username+ ' ' + password+"\n");
 			bw.close();
 			
 			System.out.println(username);
