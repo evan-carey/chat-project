@@ -44,6 +44,7 @@ public class TestServerRunChatRoomJunit {
 		System.out.println(testchatroom.transmitChatRoomUserList("CHATROOM"));
 		testchatroom.addUser("evan","CHATROOM");
 		System.out.println(testchatroom.transmitChatRoomUserList("CHATROOM"));
+		assertEquals(1,1);
 	}
 
 }

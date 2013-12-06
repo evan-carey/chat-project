@@ -112,7 +112,8 @@ public class ConnectingClient extends AbstractClient {
 				session.close();
 				connection.close();
 
-				new Client(username);
+				Client client = new Client(username);
+				client.enterServer();
 
 			} else {
 
@@ -133,6 +134,17 @@ public class ConnectingClient extends AbstractClient {
 		} catch (JMSException e) {
 			System.out.println(e.getMessage());
 		}
+	}
+	
+	public static void main(String[] args) {
+		/*
+		 * NOTE: If you want to test the messaging without having to log in
+		 * first, create a new Client(). If you want to test logging in too,
+		 * create a new ConnectingClient() instead.
+		 */
+
+		// new Client();
+		new ConnectingClient();
 	}
 
 }

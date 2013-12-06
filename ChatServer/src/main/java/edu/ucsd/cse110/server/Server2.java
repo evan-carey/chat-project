@@ -7,14 +7,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Scanner;
 import java.util.Set;
 
-import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
-import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
@@ -26,7 +25,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.JmsException;
 import org.springframework.jms.connection.CachingConnectionFactory;
-import org.springframework.jms.connection.JmsResourceHolder;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessageCreator;
 import org.springframework.jms.listener.SimpleMessageListenerContainer;
@@ -49,7 +47,7 @@ public class Server2 {
 	private Set<String> privateChatContainer=new HashSet<String>();
 	private boolean multicastFlag = false;
 
-	public Server2() {
+	public Server2() {		
 		accounts = new Accounts();
 		loggedOn = new HashMap<String, Destination>();
 		ShutdownHook.attachShutdownHook(this);
@@ -59,6 +57,7 @@ public class Server2 {
 			e.printStackTrace();
 		}
 	}
+	
 	
 
 	public String getStringLoggedOn(){
@@ -130,7 +129,7 @@ public class Server2 {
 		return mc1;
 	}
 	
-	private boolean setChat(final Message message) throws JMSException {
+	public boolean setChat(final Message message) throws JMSException {
 		String[] msg = ((TextMessage) message).getText().split(" ");
 		if (msg.length < 2) return false;
 		final String user2 = msg[1];
@@ -192,7 +191,17 @@ public class Server2 {
 				recipients.put(users[i], loggedOn.get(users[i]));
 			} else {
 				// invalid user specified in multicast
-				sendMessage(tmp.getJMSReplyTo(), "failtosetmulticast");
+				MessageCreator mc = new MessageCreator() {
+					@Override
+					public Message createMessage(Session session) throws JMSException{
+						TextMessage msg = session.createTextMessage();
+						msg.setText("failtosetmulticast");
+						msg.setJMSCorrelationID("failtosetmulticast");
+						return msg;
+					}
+				};
+				
+				sendMessage(tmp.getJMSReplyTo(), mc);
 				return false;
 			}
 		}
@@ -210,7 +219,7 @@ public class Server2 {
 					TextMessage message1 = session.createTextMessage();
 					message1.setText(multicastTopic);
 					message1.setJMSCorrelationID("setMulticastConsumer");
-					System.out.println("set multicast command");/////////
+					System.out.println("set multicast command");
 					return message1;
 				}
 			};
@@ -410,6 +419,7 @@ public class Server2 {
 		Destination dest = msg.getJMSReplyTo();
 		if (msg.getJMSCorrelationID()!=null && !loggedOn.containsKey(user)) {
 			loggedOn.put(user, dest);
+			accounts.writeToFile();
 			
 			MessageCreator mc_onlineuser = new MessageCreator() {
 				public Message createMessage(Session session) throws JMSException {
@@ -437,28 +447,7 @@ public class Server2 {
 			};
 			sendMessage(msg.getJMSReplyTo(), mc);
 		}
-		
-		// Regular message handling
-		/*MessageCreator mc = new MessageCreator() {
-			public Message createMessage(Session session) throws JMSException {
-				TextMessage message1 = session.createTextMessage();
-				message1.setText(text);
-				message1.setJMSCorrelationID(msg.getJMSCorrelationID());
-				return message1;
-			}
-		}; 
-		try{
-		
-			jmsTemplate.send(msg.getJMSReplyTo(), mc);
-	
-		}catch(UnsupportedOperationException e){
-			return;
-		}*/
 		System.out.println(msg.getJMSCorrelationID()+" >> " + text);
-//		TextMessage tm = resourceHolder.getSession().createTextMessage();
-//		tm.setJMSCorrelationID(msg.getJMSCorrelationID());
-//		tm.setText(text);
-//		jmsTemplate.convertAndSend(msg.getJMSReplyTo(), tm);
 		
 	}
 	
@@ -544,12 +533,14 @@ public class Server2 {
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
 				public void run() {
-					System.out.println("Saving account information to file...");
-					server2.accounts.writeToFile();
-					System.out.println("Done!");
+					System.out.println("Shutting down server.");
 				}
 			});
 		}
+	}
+	
+	public Map getUserMap(){
+		return loggedOn;
 	}
 
 	public static void main(String[] args) {
@@ -577,7 +568,5 @@ public class Server2 {
 			e.printStackTrace();
 			System.err.println("Fatal error, aborting...");
 		}
-
 	}
-
 }

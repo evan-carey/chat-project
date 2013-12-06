@@ -34,7 +34,7 @@ public class Client extends AbstractClient {
 		initialChatRoom = new EnterChatRoom(username);
 		multicastTopic = username + ".multicast";
 		//System.out.println(">>>>>>>>>>>>>>" + username);
-		enterServer();
+		//enterServer();
 	}
 
 	public void enterServer() {
@@ -260,6 +260,8 @@ public class Client extends AbstractClient {
 		System.out.println("-c [username]");
 		System.out.println("   Establishes a private chat between current user"
 				+ "and designated username.");
+		System.out.println("-d");
+		System.out.println("   Disconnects both peers from private chat");
 		System.out.println("-g");
 		System.out.println("   Returns all online users.");
 		System.out.println("-b");
@@ -289,15 +291,6 @@ public class Client extends AbstractClient {
 	}
 	
 
-	public static void main(String[] args) {
-		/*
-		 * NOTE: If you want to test the messaging without having to log in
-		 * first, create a new Client(). If you want to test logging in too,
-		 * create a new ConnectingClient() instead.
-		 */
-
-		// new Client();
-		new ConnectingClient();
-	}
+	
 
 }
