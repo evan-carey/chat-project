@@ -8,12 +8,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
-import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
@@ -25,7 +23,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.JmsException;
 import org.springframework.jms.connection.CachingConnectionFactory;
-import org.springframework.jms.connection.JmsResourceHolder;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.MessageCreator;
 import org.springframework.jms.listener.SimpleMessageListenerContainer;
@@ -48,7 +45,7 @@ public class Server2 {
 	private Set<String> privateChatContainer=new HashSet<String>();
 	private boolean multicastFlag = false;
 
-	public Server2() {
+	public Server2() {		
 		accounts = new Accounts();
 		loggedOn = new HashMap<String, Destination>();
 		ShutdownHook.attachShutdownHook(this);
@@ -374,6 +371,7 @@ public class Server2 {
 		Destination dest = msg.getJMSReplyTo();
 		if (!loggedOn.containsKey(user)) {
 			loggedOn.put(user, dest);
+			accounts.writeToFile();
 			MessageCreator mc = new MessageCreator() {
 				public Message createMessage(Session session) throws JMSException {
 					TextMessage message1 = session.createTextMessage();
@@ -491,9 +489,7 @@ public class Server2 {
 			Runtime.getRuntime().addShutdownHook(new Thread() {
 				@Override
 				public void run() {
-					System.out.println("Saving account information to file...");
-					server2.accounts.writeToFile();
-					System.out.println("Done!");
+					System.out.println("Shutting down server.");
 				}
 			});
 		}
@@ -524,7 +520,5 @@ public class Server2 {
 			e.printStackTrace();
 			System.err.println("Fatal error, aborting...");
 		}
-
 	}
-
 }

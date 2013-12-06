@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class TestServer {
 	
 	@Autowired
-	private Server2 server;
+	private Server2 server = new Server2();
 	
 	@Before
 	public void init() {

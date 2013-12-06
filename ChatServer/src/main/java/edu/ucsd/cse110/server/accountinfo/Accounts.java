@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -14,31 +15,41 @@ import java.util.Map.Entry;
 
 public class Accounts {
 
-	private static final String USER_FILE = "src/main/java/edu/ucsd/cse110/server/accounts.txt";
+	private static final String USER_FILE = "accounts.txt";
 	private HashMap<String, String> accounts;
 	
 	public Accounts() {
-		accounts = new HashMap<String, String>();
-		loadAccounts(USER_FILE);
+		try {
+			accounts = new HashMap<String, String>();
+			loadAccounts(USER_FILE);
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
 	}
 	/**
 	 * Load accounts from file into the database.
 	 * @param file The .txt file that stores usernames and passwords
 	 */
-	private void loadAccounts(String file) {
+	private void loadAccounts(String file) throws URISyntaxException {
 		BufferedReader reader = null;
 		try {
 			reader = new BufferedReader(new FileReader(file));
 			String line;
-			while ((line = reader.readLine()) != null) {
+			while ((line = reader.readLine()) != null ) {
 				String[] account = line.split(" ");
-				accounts.put(account[0], account[1]);
+				if (account.length > 1)
+					accounts.put(account[0], account[1]);
 			}
 			reader.close();
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+		Iterator<Entry<String, String>> it = accounts.entrySet().iterator();
+		while(it.hasNext()) {
+			Entry<String,String> e = it.next();
+			System.out.println(e.getKey() + " " + e.getValue());
 		}
 	}
 	
@@ -81,6 +92,7 @@ public class Accounts {
 		if (accounts.containsKey(username))
 			throw new AccountException("Username unavailable");
 		accounts.put(username, password);
+		writeToFile(username, password);
 	}
 	
 	/**
@@ -103,12 +115,24 @@ public class Accounts {
 			
 			while (it.hasNext()) {
 				Map.Entry<String, String> account = it.next();
-				out.write(account.getKey() + " " + account.getValue() + "\n");
+				System.out.println(account.getKey() +" " + account.getValue());
+				out.write(account.getKey() + " " + account.getValue());
+				out.newLine();
 			}
 			out.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} 
 	}
+	
+	public void writeToFile(String name, String pass) {
+		try {
+			BufferedWriter bw = new BufferedWriter(new FileWriter(USER_FILE, true));
+			bw.write(name + " " + pass);
+			bw.newLine();
+			bw.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
-//>>>>>>> branch 'master' of https://flemagut@bitbucket.org/evan_carey/cse110_project.git
