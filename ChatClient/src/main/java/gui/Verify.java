@@ -24,14 +24,14 @@ public class Verify {
 		//Check to see if the username is already taken
 		public static boolean alreadyTaken(String username, int PassCheck, String password) throws FileNotFoundException{
 
-			Scanner input = new Scanner(new File("src/main/java/testFile.txt"));
+			Scanner input = new Scanner(new File("accounts.txt"));
 			int x;
 			String name;
 			
 			//Check while the file has a next line
 			while(input.hasNextLine()){
 				String blah = input.nextLine();
-				x = blah.indexOf('/');
+				x = blah.indexOf(' ');
 				name = blah.substring(0, x);
 				
 				if(name.equalsIgnoreCase(username)){
@@ -62,14 +62,14 @@ public class Verify {
 		}
 		
 		public static boolean verifyCombination(String username, String password) throws FileNotFoundException{
-			Scanner input = new Scanner(new File("src/main/java/testFile.txt"));
+			Scanner input = new Scanner(new File("accounts.txt"));
 			int x;
 			String name;
 			
 			//Check while the file has a next line
 			while(input.hasNextLine()){
 				String blah = input.nextLine();
-				x = blah.indexOf('/');
+				x = blah.indexOf(' ');
 				name = blah.substring(0, x);
 				
 				if(name.equalsIgnoreCase(username)){
